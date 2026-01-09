@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 新增這段 */
+body {
+  @apply bg-slate-950 text-gray-300;
+}
