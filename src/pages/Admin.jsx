@@ -51,7 +51,18 @@ const Admin = () => {
   const [specs, setSpecs] = useState([{ id: 's1', label: "總建坪", value: "" }]);
   const [features, setFeatures] = useState([{ id: 'f1', title: "特色標題", desc: "" }]);
   const [concept, setConcept] = useState({ title: "建築理念", content: "", image: "" }); 
-  const [envList, setEnvList] = useState([{ id: 'e1', title: "交通優勢", desc: "", image: "", link: "" }]);
+  
+  // 預設帶入工商時報新聞 (模擬 AI 搜尋)
+  const [envList, setEnvList] = useState([
+    { 
+      id: 'e1', 
+      title: "科技業買爆廠房！2025年商用不動產成交衝上1,900億元", 
+      desc: "受惠於AI及半導體需求帶動，工業地產穩居市場交易主力，新竹、台南科學園區周邊詢問度最高。(資料來源：工商時報)", 
+      image: "", 
+      link: "https://www.ctee.com.tw/news/20260110700492-430601" 
+    }
+  ]);
+  
   const [progressList, setProgressList] = useState([{ id: 'p1', date: '', status: '' }]);
   
   const [globalSettings, setGlobalSettings] = useState({
@@ -169,7 +180,14 @@ const Admin = () => {
     setSpecs([{ id: `s-${Date.now()}`, label: "總建坪", value: "" }]);
     setFeatures([{ id: `f-${Date.now()}`, title: "特色標題", desc: "" }]);
     setConcept({ title: "建築理念", content: "", image: "" });
-    setEnvList([{ id: `e-${Date.now()}`, title: "周遭環境", desc: "", image: "", link: "" }]);
+    // 預設帶入新聞
+    setEnvList([{ 
+      id: `e-${Date.now()}`, 
+      title: "科技業買爆廠房！2025年商用不動產成交衝上1,900億元", 
+      desc: "受惠於AI及半導體需求帶動，工業地產穩居市場交易主力...(資料來源：工商時報)", 
+      image: "", 
+      link: "https://www.ctee.com.tw/news/20260110700492-430601" 
+    }]);
     setProgressList([{ id: `p-${Date.now()}`, date: "", status: "" }]);
   };
 
@@ -302,7 +320,7 @@ const Admin = () => {
                     <h3 className="font-bold text-lg border-l-4 border-orange-500 pl-2">案場理念</h3>
                     <input value={concept.title} onChange={e=>setConcept({...concept, title:e.target.value})} className={inputStyle} placeholder="標題" />
                     <textarea value={concept.content} onChange={e=>setConcept({...concept, content:e.target.value})} className={`${inputStyle} h-32`} placeholder="內容..." />
-                    <div><label className={labelStyle}>配圖</label><div className="flex gap-2"><input type="file" onChange={e=>handleUpload(e, (url)=>setConcept({...concept, image: url}))} className="text-xs"/>{concept.image && <img src={concept.image} className="h-10 w-10 object-cover border"/>}</div></div>
+                    <div><label className={labelStyle}>配圖 (預設為工業風建築)</label><div className="flex gap-2"><input type="file" onChange={e=>handleUpload(e, (url)=>setConcept({...concept, image: url}))} className="text-xs"/>{concept.image && <img src={concept.image} className="h-10 w-10 object-cover border"/>}</div></div>
                   </section>
 
                   <section className="space-y-4">

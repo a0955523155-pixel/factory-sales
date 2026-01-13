@@ -10,21 +10,40 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+// --- 1. 建築理念 (修正圖片顯示問題) ---
 const Concept = ({ data }) => {
+  // 如果後台沒傳圖片，使用這張穩定的工業風預設圖
+  const defaultImage = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80";
+  const bgImage = (data.image && data.image !== "") ? data.image : defaultImage;
+  
   return (
     <section className="py-24 px-6 max-w-7xl mx-auto">
-      <div className="relative flex flex-col lg:flex-row gap-12 items-center">
-         <div className="w-full lg:w-1/2 rounded-3xl overflow-hidden shadow-2xl relative group bg-white p-12 flex items-center justify-center">
-            {data.image ? (
-              <img src={data.image} className="w-full h-auto max-h-[400px] object-contain drop-shadow-xl" />
-            ) : (
-              <div className="text-orange-500 font-black text-4xl opacity-20">FACTORY PRO</div>
-            )}
+      <div className="relative flex flex-col lg:flex-row gap-16 items-center">
+         
+         {/* 左側圖片區：修正為滿版顯示，並強制最小高度 */}
+         <div className="w-full lg:w-1/2 relative min-h-[400px]">
+            <div className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border border-slate-200">
+                <img 
+                  src={bgImage} 
+                  className="w-full h-full object-cover hover:scale-105 transition duration-700" 
+                  alt="Concept"
+                  onError={(e) => { e.target.src = defaultImage; }} // 如果圖片載入失敗，強制切回預設圖
+                />
+            </div>
+            {/* 裝飾性背框 */}
+            <div className="absolute -inset-4 border-2 border-orange-500/20 rounded-3xl -z-10 transform rotate-3"></div>
          </div>
          
-         <motion.div initial={{ x: 50, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} className="w-full lg:w-1/2">
+         {/* 右側文字區 */}
+         <motion.div 
+           initial={{ x: 50, opacity: 0 }} 
+           whileInView={{ x: 0, opacity: 1 }} 
+           className="w-full lg:w-1/2"
+         >
            <span className="text-orange-600 font-mono font-bold tracking-widest uppercase mb-4 block">Design Concept</span>
-           <h2 className="text-4xl md:text-5xl font-black mb-8 text-slate-800 leading-tight">{data.title || "設計理念"}</h2>
+           <h2 className="text-4xl md:text-5xl font-black mb-8 text-slate-800 leading-tight">
+             {data.title || "設計理念"}
+           </h2>
            <div className="text-lg leading-relaxed text-slate-600 whitespace-pre-line font-medium border-l-4 border-orange-500 pl-6">
              {data.content}
            </div>
