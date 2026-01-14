@@ -19,7 +19,6 @@ const Home = () => {
     const fetchData = async () => {
       try { const settingSnap = await getDoc(doc(db, "settings", "global")); if (settingSnap.exists()) setSettings(settingSnap.data()); } catch(e) {}
       
-      // 1. 抓取案場
       const querySnapshot = await getDocs(collection(db, "properties"));
       const list = [];
       const regionSet = new Set();
@@ -31,15 +30,15 @@ const Home = () => {
       setProperties(list);
       setRegions([...regionSet]);
 
-      // 2. 抓取文章 (各類別最新一篇)
       try {
         const articleSnap = await getDocs(collection(db, "articles"));
         const allArticles = [];
         articleSnap.forEach((doc) => allArticles.push({ id: doc.id, ...doc.data() }));
         
-        // 排序：新 -> 舊
-        allArticles.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // 排序：新 -> 舊 (createdAt 優先)
+        allArticles.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
+        // 分別找出各類別的第一篇
         const latestNews = allArticles.find(a => a.category === 'news');
         const latestAcademy = allArticles.find(a => a.category === 'academy');
         const latestCase = allArticles.find(a => a.category === 'cases');
@@ -82,14 +81,13 @@ const Home = () => {
         <div className="absolute top-10 right-0 opacity-10 hidden md:block"><Database size={200} /></div>
       </div>
       
-      {/* 優化後的輪播列表 */}
       <div className="pl-6 max-w-7xl mx-auto w-full relative z-10 overflow-hidden mb-20">
         <div className="flex items-center justify-between mb-6 pr-6 border-b border-slate-200 pb-4"><h2 className="text-3xl font-bold flex items-center gap-3 text-slate-800"><span className="w-3 h-8 bg-orange-600 block"></span>精選案場</h2><div className="flex gap-4 items-center"><span className="font-mono text-slate-400 text-sm font-bold hidden md:block">SCROLL &rarr;</span><span className="font-mono text-slate-400 text-lg font-bold">DATA: {filteredProps.length}</span></div></div>
         {loading ? <div className="text-center py-20 text-2xl font-mono text-slate-400">LOADING DATA...</div> : (
-          // 修改處：snap-x, scroll-pl-6 (左側預留空間), snap-start (靠左對齊)
-          <div className="flex gap-6 overflow-x-auto pb-12 snap-x snap-mandatory scroll-pl-6 pr-6 scrollbar-hide w-full" style={{ scrollBehavior: 'smooth' }}>
+          // 修改處：card 寬度設為 calc(100vw - 32px)，扣掉左右 padding，確保完全滿版
+          <div className="flex gap-4 overflow-x-auto pb-12 snap-x snap-mandatory pr-6 scrollbar-hide w-full" style={{ scrollBehavior: 'smooth' }}>
             {filteredProps.map((item, index) => (
-              <motion.div key={item.id} initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="snap-start shrink-0 w-[85vw] md:w-[400px]">
+              <motion.div key={item.id} initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="snap-center shrink-0 w-[calc(100vw-48px)] md:w-[400px]">
                 <Link to={`/property/${item.id}`} className="group block bg-white border border-slate-200 hover:border-orange-500 transition-all duration-300 relative overflow-hidden rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-2 h-full flex flex-col">
                   <div className="h-64 overflow-hidden relative">
                     <img src={item.basicInfo?.thumb || "https://via.placeholder.com/400x300"} alt={item.basicInfo?.title} className="w-full h-full object-cover transition duration-700 group-hover:scale-110"/>
@@ -103,7 +101,7 @@ const Home = () => {
                 </Link>
               </motion.div>
             ))}
-            <div className="w-4 shrink-0"></div>
+            <div className="w-2 shrink-0"></div>
           </div>
         )}
       </div>
