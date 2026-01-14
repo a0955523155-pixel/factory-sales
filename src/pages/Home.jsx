@@ -35,10 +35,13 @@ const Home = () => {
         const allArticles = [];
         articleSnap.forEach((doc) => allArticles.push({ id: doc.id, ...doc.data() }));
         
-        // 排序：新 -> 舊 (createdAt 優先)
-        allArticles.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        // 排序優先順序：Order -> CreatedAt (Newest)
+        allArticles.sort((a, b) => {
+           if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+           return (b.createdAt || 0) - (a.createdAt || 0);
+        });
 
-        // 分別找出各類別的第一篇
+        // 顯示各分類第一篇
         const latestNews = allArticles.find(a => a.category === 'news');
         const latestAcademy = allArticles.find(a => a.category === 'academy');
         const latestCase = allArticles.find(a => a.category === 'cases');
@@ -81,13 +84,13 @@ const Home = () => {
         <div className="absolute top-10 right-0 opacity-10 hidden md:block"><Database size={200} /></div>
       </div>
       
+      {/* 優化後的輪播：snap-center 置中，寬度調整為 85vw */}
       <div className="pl-6 max-w-7xl mx-auto w-full relative z-10 overflow-hidden mb-20">
         <div className="flex items-center justify-between mb-6 pr-6 border-b border-slate-200 pb-4"><h2 className="text-3xl font-bold flex items-center gap-3 text-slate-800"><span className="w-3 h-8 bg-orange-600 block"></span>精選案場</h2><div className="flex gap-4 items-center"><span className="font-mono text-slate-400 text-sm font-bold hidden md:block">SCROLL &rarr;</span><span className="font-mono text-slate-400 text-lg font-bold">DATA: {filteredProps.length}</span></div></div>
         {loading ? <div className="text-center py-20 text-2xl font-mono text-slate-400">LOADING DATA...</div> : (
-          // 修改處：card 寬度設為 calc(100vw - 32px)，扣掉左右 padding，確保完全滿版
           <div className="flex gap-4 overflow-x-auto pb-12 snap-x snap-mandatory pr-6 scrollbar-hide w-full" style={{ scrollBehavior: 'smooth' }}>
             {filteredProps.map((item, index) => (
-              <motion.div key={item.id} initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="snap-center shrink-0 w-[calc(100vw-48px)] md:w-[400px]">
+              <motion.div key={item.id} initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="snap-center shrink-0 w-[85vw] md:w-[400px]">
                 <Link to={`/property/${item.id}`} className="group block bg-white border border-slate-200 hover:border-orange-500 transition-all duration-300 relative overflow-hidden rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-2 h-full flex flex-col">
                   <div className="h-64 overflow-hidden relative">
                     <img src={item.basicInfo?.thumb || "https://via.placeholder.com/400x300"} alt={item.basicInfo?.title} className="w-full h-full object-cover transition duration-700 group-hover:scale-110"/>

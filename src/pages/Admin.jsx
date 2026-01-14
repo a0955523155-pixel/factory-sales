@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, setDoc, getDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { X, Plus, Trash2, Layout, Users, Settings, Map as MapIcon, Upload, Languages, FileText, Sparkles, LogIn, GripVertical } from 'lucide-react';
+import { X, Plus, Trash2, Layout, Users, Settings, Map as MapIcon, Upload, Languages, FileText, Sparkles, LogIn, GripVertical, ChevronUp, ChevronDown, RefreshCcw } from 'lucide-react';
 
 const safeStr = (val) => (val === undefined || val === null) ? "" : String(val);
 
@@ -43,7 +43,6 @@ const compressImage = (file) => {
 };
 
 const Admin = () => {
-  // --- 登入狀態 ---
   const [isAuth, setIsAuth] = useState(false);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
 
@@ -73,7 +72,6 @@ const Admin = () => {
   const [progressList, setProgressList] = useState([{ id: 'p1', date: '', status: '' }]);
   const [units, setUnits] = useState([{ id: 'u1', number: '', ping: '', price: '', status: 'available', layout: '' }]);
 
-  // 文章表單
   const [articleForm, setArticleForm] = useState({ category: 'news', title: '', content: '', date: '', image: '' });
   const [editArticleId, setEditArticleId] = useState(null);
 
@@ -85,7 +83,6 @@ const Admin = () => {
   });
 
   useEffect(() => { 
-    // 檢查 localStorage 是否已登入
     const storedAuth = localStorage.getItem('isAuth');
     if (storedAuth === 'true') {
       setIsAuth(true);
@@ -93,12 +90,11 @@ const Admin = () => {
     }
   }, []);
 
-  // --- 登入功能 ---
   const handleLogin = (e) => {
     e.preventDefault();
     if (loginForm.user === 'gst0800666738' && loginForm.pass === '0800666738') {
       setIsAuth(true);
-      localStorage.setItem('isAuth', 'true');
+      localStorage.setItem('isAuth', 'true'); // 保持登入狀態
       fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles();
     } else {
       alert("帳號或密碼錯誤");
@@ -107,15 +103,15 @@ const Admin = () => {
 
   const fetchProperties = async () => { try { const snap = await getDocs(collection(db, "properties")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); setProperties(list); } catch (e) {} };
   
-  // 文章讀取：優先依據 order 排序，若無 order 則依 createdAt (新->舊)
   const fetchArticles = async () => { 
     try { 
       const snap = await getDocs(collection(db, "articles")); 
       const list = []; 
       snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); 
+      // 預設依 order 排序，若無 order 則依日期 (新到舊)
       list.sort((a, b) => {
-        if (a.order !== undefined && b.order !== undefined) return a.order - b.order; // 自訂順序優先
-        return (b.createdAt || 0) - (a.createdAt || 0); // 否則依時間 (新到舊)
+        if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+        return (b.createdAt || 0) - (a.createdAt || 0); 
       });
       setArticles(list); 
     } catch (e) {} 
@@ -124,7 +120,21 @@ const Admin = () => {
   const fetchGlobalSettings = async () => { try { const docSnap = await getDoc(doc(db, "settings", "global")); if (docSnap.exists()) setGlobalSettings(docSnap.data()); } catch (e) {} };
   const fetchCustomers = async () => { try { const snap = await getDocs(collection(db, "customers")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); setCustomers(list); } catch (e) {} };
 
-  // --- 文章拖放排序 ---
+  // --- 手動排序 (上移/下移) ---
+  const moveArticle = async (index, direction) => {
+    const newItems = [...articles];
+    if (direction === 'up' && index > 0) {
+      [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+    } else if (direction === 'down' && index < newItems.length - 1) {
+      [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+    } else {
+      return;
+    }
+    setArticles(newItems);
+    saveOrder(newItems);
+  };
+
+  // --- 拖曳排序 (電腦版) ---
   const handleDragStart = (e, position) => { dragItem.current = position; };
   const handleDragEnter = (e, position) => { dragOverItem.current = position; };
   const handleDragEnd = async () => {
@@ -134,17 +144,28 @@ const Admin = () => {
     copyListItems.splice(dragOverItem.current, 0, dragItemContent);
     dragItem.current = null;
     dragOverItem.current = null;
-    setArticles(copyListItems); // 更新 UI
+    setArticles(copyListItems);
+    saveOrder(copyListItems);
+  };
 
-    // 儲存順序到資料庫
+  // --- 儲存順序 ---
+  const saveOrder = async (items) => {
     try {
       const batch = writeBatch(db);
-      copyListItems.forEach((item, index) => {
+      items.forEach((item, index) => {
         const ref = doc(db, "articles", item.id);
         batch.update(ref, { order: index });
       });
       await batch.commit();
     } catch (e) { console.error("排序儲存失敗", e); }
+  };
+
+  // --- 一鍵按日期重排 (新到舊) ---
+  const resetOrderToDate = async () => {
+    if (!window.confirm("確定要依照「日期 (新到舊)」重新排序所有文章嗎？")) return;
+    const sorted = [...articles].sort((a, b) => new Date(b.date) - new Date(a.date));
+    setArticles(sorted);
+    saveOrder(sorted);
   };
 
   const handleTranslate = async () => {
@@ -194,19 +215,23 @@ const Admin = () => {
 
   const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); const payload = { basicInfo: formData, specs, features, concept, environmentList: envList, progressHistory: progressList, units, images: formData.images, updatedAt: new Date() }; if (editId) await updateDoc(doc(db, "properties", editId), payload); else await addDoc(collection(db, "properties"), payload); alert("儲存成功！"); window.location.reload(); setLoading(false); };
   
-  // 儲存文章 (加入 createdAt 時間戳)
   const handleArticleSubmit = async (e) => { 
     e.preventDefault(); setLoading(true); 
-    const payload = { ...articleForm, createdAt: Date.now(), updatedAt: new Date() }; // 確保有時間戳
-    if (editArticleId) await updateDoc(doc(db, "articles", editArticleId), payload); 
-    else await addDoc(collection(db, "articles"), payload); 
+    // 新增時給予最小的 order (置頂)，或者由 Date 排序
+    const payload = { ...articleForm, createdAt: Date.now(), updatedAt: new Date(), order: -Date.now() }; 
+    if (editArticleId) {
+        delete payload.order; // 編輯時不改變順序
+        await updateDoc(doc(db, "articles", editArticleId), payload); 
+    } else {
+        await addDoc(collection(db, "articles"), payload); 
+    }
     alert("文章發布成功！"); setArticleForm({ category: 'news', title: '', content: '', date: '', image: '' }); setEditArticleId(null); fetchArticles(); setLoading(false); 
   };
 
   const inputStyle = "w-full bg-white border border-slate-300 text-slate-800 p-3 md:p-2.5 text-base md:text-sm focus:outline-none focus:border-orange-500 rounded-lg shadow-sm transition placeholder:text-slate-300";
   const labelStyle = "block text-xs font-bold text-slate-500 mb-1.5 tracking-wider uppercase";
 
-  // --- 登入畫面 ---
+  // --- 登入畫面 (修正：增加 autocomplete) ---
   if (!isAuth) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-100 px-4">
@@ -217,8 +242,8 @@ const Admin = () => {
              <p className="text-slate-400 text-sm mt-1">請輸入專屬帳號密碼</p>
           </div>
           <div className="space-y-4">
-             <input type="text" placeholder="帳號" value={loginForm.user} onChange={e=>setLoginForm({...loginForm, user:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" />
-             <input type="password" placeholder="密碼" value={loginForm.pass} onChange={e=>setLoginForm({...loginForm, pass:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" />
+             <input type="text" placeholder="帳號" value={loginForm.user} onChange={e=>setLoginForm({...loginForm, user:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" autoComplete="username" />
+             <input type="password" placeholder="密碼" value={loginForm.pass} onChange={e=>setLoginForm({...loginForm, pass:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" autoComplete="current-password" />
              <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition shadow-lg">登入系統</button>
           </div>
         </form>
@@ -252,13 +277,16 @@ const Admin = () => {
         
         {viewMode === 'customers' && (<div className="p-6 md:p-10 w-full max-w-7xl mx-auto overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">客戶諮詢資料表</h1><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="p-5">日期</th><th className="p-5">姓名</th><th className="p-5">電話</th><th className="p-5">行業</th><th className="p-5">需求</th><th className="p-5">坪數</th></tr></thead><tbody>{customers.map(c => (<tr key={c.id} className="border-b border-slate-100 hover:bg-orange-50/50 transition"><td className="p-5 font-mono text-slate-400">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</td><td className="p-5 font-bold text-slate-800">{c.name}</td><td className="p-5 text-orange-600 font-bold">{c.phone}</td><td className="p-5">{c.industry}</td><td className="p-5"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{c.needs}</span></td><td className="p-5">{c.ping}</td></tr>))}</tbody></table></div></div>)}
         
-        {/* --- 文章管理 (新增拖曳排序功能) --- */}
+        {/* --- 文章管理 (新增手機版排序按鈕) --- */}
         {viewMode === 'articles' && (
           <div className="flex flex-col md:flex-row h-full">
-             <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-4 overflow-y-auto shrink-0 max-h-[30vh] md:max-h-full">
+             <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-4 overflow-y-auto shrink-0 max-h-[40vh] md:max-h-full">
                 <button onClick={() => {setEditArticleId(null); setArticleForm({ category: 'news', title: '', content: '', date: '', image: '' });}} className="w-full bg-slate-900 text-white py-3 rounded-lg mb-4 text-sm font-bold shadow hover:bg-black transition">+ 撰寫新文章</button>
                 <div className="space-y-2">
-                  <p className="text-xs text-slate-400 text-center mb-2">可拖曳調整順序 (由上至下)</p>
+                  <div className="flex justify-between items-center mb-2 px-1">
+                     <p className="text-xs text-slate-400">可拖曳或點擊箭頭排序</p>
+                     <button onClick={resetOrderToDate} className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"><RefreshCcw size={10}/> 按日期重排 (新→舊)</button>
+                  </div>
                   {articles.map((a, index) => (
                      <div 
                        key={a.id} 
@@ -269,7 +297,14 @@ const Admin = () => {
                        onClick={()=>loadEditArticle(a)} 
                        className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}
                      >
-                        <GripVertical size={16} className="text-slate-300"/>
+                        {/* 手機排序按鈕 */}
+                        <div className="flex flex-col gap-1 md:hidden">
+                           <button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button>
+                           <button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button>
+                        </div>
+                        {/* 電腦拖曳把手 */}
+                        <GripVertical size={16} className="text-slate-300 hidden md:block"/>
+                        
                         <div className="flex-1 min-w-0">
                            <span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 ${a.category==='news'?'bg-blue-500':a.category==='academy'?'bg-green-500':'bg-purple-500'}`}>{a.category.toUpperCase()}</span>
                            <div className="font-bold text-slate-800 line-clamp-1 text-sm">{a.title}</div>
@@ -293,7 +328,7 @@ const Admin = () => {
           </div>
         )}
 
-        {/* --- 案場編輯 (保持原樣) --- */}
+        {/* --- 案場編輯 (內容保持不變) --- */}
         {viewMode === 'properties' && (
           <>
             <div className="lg:hidden p-2 bg-white border-b overflow-x-auto flex gap-2"><button onClick={resetForm} className="bg-orange-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs shrink-0">+ 新增</button>{properties.map(p => (<button key={p.id} onClick={() => loadEdit(p)} className={`px-3 py-1.5 rounded-lg border text-xs font-bold shrink-0 whitespace-nowrap ${editId === p.id ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-slate-50 border-slate-200'}`}>{p.basicInfo.title.substring(0, 6)}...</button>))}</div>
