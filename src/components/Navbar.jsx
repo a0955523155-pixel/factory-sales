@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Phone, Factory, Newspaper, GraduationCap, Trophy, Home } from 'lucide-react';
+import { Menu, X, Phone, Factory, Newspaper, GraduationCap, Trophy, Home, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -56,6 +56,8 @@ const Navbar = ({ phone }) => {
               <Phone size={16} className="group-hover:animate-bounce"/>
               <span className="tracking-wider">{settings.contactPhone}</span>
             </a>
+            
+            {/* 電腦版也可以加個隱藏的小後台入口 (選填，目前先不加免得太雜) */}
           </div>
 
           <div className="lg:hidden">
@@ -66,15 +68,20 @@ const Navbar = ({ phone }) => {
         </div>
       </div>
       
-      {/* 手機版選單 */}
+      {/* 手機版選單 (包含後台入口) */}
       {isOpen && (
-         <div className="lg:hidden bg-white border-t border-slate-100 absolute w-full left-0 shadow-xl p-4 flex flex-col gap-2">
+         <div className="lg:hidden bg-white border-t border-slate-100 absolute w-full left-0 shadow-xl p-4 flex flex-col gap-2 h-screen pb-32 overflow-y-auto">
             {navLinks.map((link) => (
-              <Link key={link.path} to={link.path} className="flex items-center gap-3 py-3 px-4 text-slate-800 font-bold hover:bg-slate-50 rounded" onClick={() => setIsOpen(false)}>
+              <Link key={link.path} to={link.path} className="flex items-center gap-3 py-4 px-4 text-slate-800 font-bold hover:bg-slate-50 rounded text-lg border-b border-slate-50" onClick={() => setIsOpen(false)}>
                 {link.icon} {link.name}
               </Link>
             ))}
-            <a href={`tel:${settings.contactPhone}`} className="block py-3 px-4 text-orange-600 font-bold border-t border-slate-100 mt-2">撥打電話: {settings.contactPhone}</a>
+            <a href={`tel:${settings.contactPhone}`} className="block py-4 px-4 text-orange-600 font-bold mt-2 text-lg">撥打電話: {settings.contactPhone}</a>
+            
+            {/* 手機版專用後台入口 */}
+            <Link to="/admin" className="flex items-center gap-3 py-4 px-4 text-slate-400 font-bold hover:bg-slate-50 rounded mt-4 border-t border-slate-100" onClick={() => setIsOpen(false)}>
+               <Settings size={18}/> 管理後台
+            </Link>
          </div>
       )}
     </nav>
