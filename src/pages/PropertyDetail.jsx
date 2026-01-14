@@ -10,25 +10,23 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-// --- 1. 建築理念 (已更換為工業風預設圖) ---
+// --- 1. 建築理念 (圖片強制顯示) ---
 const Concept = ({ data }) => {
-  // 這裡換成了一張更具工業感的清水模建築照片
-  const defaultImage = "https://images.unsplash.com/photo-1565008447742-97f6f38c9853?auto=format&fit=crop&q=80";
-  const bgImage = (data.image && data.image !== "") ? data.image : defaultImage;
-  
+  // 穩定的工業風預設圖
+  const defaultImage = "https://images.unsplash.com/photo-1565008447742-97f6f38c9853?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80";
+  const bgImage = (data.image && data.image.length > 10) ? data.image : defaultImage;
+
   return (
     <section className="py-24 px-6 max-w-7xl mx-auto">
       <div className="relative flex flex-col lg:flex-row gap-12 items-center">
-         <div className="w-full lg:w-1/2 rounded-3xl overflow-hidden shadow-2xl relative group bg-white p-12 flex items-center justify-center">
-            {/* 如果有上傳圖片就用上傳的，沒有就用上面的預設工業圖 */}
+         <div className="w-full lg:w-1/2 aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl relative group bg-white p-2">
             <img 
-                src={bgImage} 
-                className="w-full h-auto max-h-[500px] object-cover drop-shadow-xl rounded-lg" 
-                alt="Architectural Concept" 
-                onError={(e) => e.target.src = defaultImage}
+              src={bgImage} 
+              className="w-full h-full object-cover rounded-2xl transition duration-700 group-hover:scale-105" 
+              alt="Concept"
+              onError={(e) => { e.target.onerror = null; e.target.src = defaultImage; }} // 雙重保險
             />
          </div>
-         
          <motion.div initial={{ x: 50, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} className="w-full lg:w-1/2">
            <span className="text-orange-600 font-mono font-bold tracking-widest uppercase mb-4 block">Design Concept</span>
            <h2 className="text-4xl md:text-5xl font-black mb-8 text-slate-800 leading-tight">{data.title || "設計理念"}</h2>
