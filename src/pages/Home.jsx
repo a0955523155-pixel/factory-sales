@@ -4,33 +4,26 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-<<<<<<< HEAD
 import { MapPin, ArrowRight, Database, Cpu, Search, ArrowUpRight, Newspaper } from 'lucide-react';
-=======
-import { MapPin, ArrowRight, Database, Cpu } from 'lucide-react';
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
 import { motion } from 'framer-motion';
 
 const Home = () => {
   const [properties, setProperties] = useState([]);
-  const [articles, setArticles] = useState([]); // 新增文章狀態
+  const [articles, setArticles] = useState([]); // 文章狀態
   const [loading, setLoading] = useState(true);
-<<<<<<< HEAD
   const [searchRegion, setSearchRegion] = useState(""); // 搜尋地區
   const [regions, setRegions] = useState([]); // 地區列表
-=======
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
   const [settings, setSettings] = useState({ heroTitleCN: "未來工廠", heroTitleEN: "FUTURE FACTORY" });
 
   useEffect(() => {
     const fetchData = async () => {
+      // 1. 讀取全站設定
       try {
         const settingSnap = await getDoc(doc(db, "settings", "global"));
         if (settingSnap.exists()) setSettings(settingSnap.data());
       } catch(e) {}
-<<<<<<< HEAD
 
-      // Fetch Properties
+      // 2. 讀取案場並提取地區
       const querySnapshot = await getDocs(collection(db, "properties"));
       const list = [];
       const regionSet = new Set();
@@ -43,19 +36,15 @@ const Home = () => {
       setProperties(list);
       setRegions([...regionSet]);
 
-      // Fetch Latest Articles (只抓最新 3 筆)
-      const articleSnap = await getDocs(collection(db, "articles"));
-      const articleList = [];
-      articleSnap.forEach((doc) => articleList.push({ id: doc.id, ...doc.data() }));
-      articleList.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setArticles(articleList.slice(0, 3));
+      // 3. 讀取最新文章 (只抓最新 3 筆)
+      try {
+        const articleSnap = await getDocs(collection(db, "articles"));
+        const articleList = [];
+        articleSnap.forEach((doc) => articleList.push({ id: doc.id, ...doc.data() }));
+        articleList.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setArticles(articleList.slice(0, 3));
+      } catch(e) {}
 
-=======
-      const querySnapshot = await getDocs(collection(db, "properties"));
-      const list = [];
-      querySnapshot.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
-      setProperties(list);
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
       setLoading(false);
     };
     fetchData();
@@ -70,20 +59,17 @@ const Home = () => {
     <div className="min-h-screen tech-bg-light font-sans selection:bg-orange-500 selection:text-white pb-20">
       <Navbar /> 
       <div className="scanline"></div>
-<<<<<<< HEAD
 
-      {/* Hero */}
+      {/* Hero Header */}
       <div className="pt-32 pb-10 px-6 max-w-7xl mx-auto w-full relative">
-=======
-      <div className="pt-32 pb-16 px-6 max-w-7xl mx-auto w-full relative">
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1 bg-white border border-orange-200 text-orange-600 rounded-full text-sm font-bold mb-6 shadow-sm"><Cpu size={14} /> INDUSTRIAL DATABASE V2.0</div>
+          <div className="inline-flex items-center gap-2 px-4 py-1 bg-white border border-orange-200 text-orange-600 rounded-full text-sm font-bold mb-6 shadow-sm">
+             <Cpu size={14} /> INDUSTRIAL DATABASE V2.0
+          </div>
           <h1 className="text-6xl md:text-8xl font-black text-slate-900 mb-6 tracking-tight leading-none">
             {settings.heroTitleCN || "未來工廠"} <br/>
             <span className="text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600 font-bold tracking-widest block mt-2">{settings.heroTitleEN || "FUTURE FACTORY"}</span>
           </h1>
-<<<<<<< HEAD
           
           {/* 下拉式搜尋引擎 */}
           <div className="max-w-md relative mt-8">
@@ -96,16 +82,13 @@ const Home = () => {
                {regions.map(r => <option key={r} value={r}>{r}</option>)}
              </select>
              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500" />
-             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div>
+             {/* 自訂箭頭 */}
+             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">▼</div>
           </div>
-=======
-          <p className="text-slate-500 text-xl font-medium max-w-2xl border-l-4 border-orange-500 pl-6 leading-relaxed">為企業主打造的智能工業地產平台。<br/>數據化分析，即時掌握全台工業用地與廠房資訊。</p>
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
         </motion.div>
         <div className="absolute top-10 right-0 opacity-10 hidden md:block"><Database size={200} /></div>
       </div>
       
-<<<<<<< HEAD
       {/* 左右滑動輪播列表 */}
       <div className="pl-6 max-w-7xl mx-auto w-full relative z-10 overflow-hidden mb-20">
         <div className="flex items-center justify-between mb-6 pr-6 border-b border-slate-200 pb-4">
@@ -117,7 +100,7 @@ const Home = () => {
         </div>
 
         {loading ? <div className="text-center py-20 text-2xl font-mono text-slate-400">LOADING DATA...</div> : (
-          <div className="flex gap-8 overflow-x-auto pb-12 snap-x snap-mandatory pr-6 scrollbar-hide">
+          <div className="flex gap-8 overflow-x-auto pb-12 snap-x snap-mandatory pr-6 scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
             {filteredProps.map((item, index) => (
               <motion.div key={item.id} initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="snap-center shrink-0 w-[85vw] md:w-[400px]">
                 <Link to={`/property/${item.id}`} className="group block bg-white border border-slate-200 hover:border-orange-500 transition-all duration-300 relative overflow-hidden rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-2 h-full flex flex-col">
@@ -129,20 +112,6 @@ const Home = () => {
                     <div className="mb-4"><h3 className="text-2xl font-bold text-slate-900 group-hover:text-orange-600 transition line-clamp-1">{item.basicInfo?.title}</h3><p className="text-slate-500 mt-1 line-clamp-1">{item.basicInfo?.subtitle}</p></div>
                     <div className="flex items-center gap-2 text-slate-500 mb-6 pb-6 border-b border-slate-100"><MapPin size={18} className="text-orange-500" /><span className="text-lg line-clamp-1">{item.basicInfo?.address}</span></div>
                     <div className="flex justify-between items-center mt-auto"><span className="text-2xl font-black text-slate-900">{item.basicInfo?.price}</span><div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition"><ArrowRight size={20}/></div></div>
-=======
-      <div className="px-6 max-w-7xl mx-auto w-full relative z-10">
-        <div className="flex items-center justify-between mb-10 border-b border-slate-200 pb-4"><h2 className="text-3xl font-bold flex items-center gap-3 text-slate-800"><span className="w-3 h-8 bg-orange-600 block"></span>精選案場</h2><span className="font-mono text-slate-400 text-lg font-bold">DATA: {properties.length} ITEMS</span></div>
-        {loading ? <div className="text-center py-20 text-2xl font-mono text-slate-400">LOADING DATA...</div> : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {properties.map((item, index) => (
-              <motion.div key={item.id} initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }}>
-                <Link to={`/property/${item.id}`} className="group block bg-white border border-slate-200 hover:border-orange-500 transition-all duration-300 relative overflow-hidden rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-2">
-                  <div className="h-72 overflow-hidden relative"><img src={item.basicInfo?.thumb || "https://via.placeholder.com/400x300"} alt={item.basicInfo?.title} className="w-full h-full object-cover transition duration-700 group-hover:scale-110"/><div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 text-xs font-bold font-mono border border-slate-200 rounded">ID: {item.id.slice(0,6)}</div></div>
-                  <div className="p-8">
-                    <div className="mb-4"><h3 className="text-2xl font-bold text-slate-900 group-hover:text-orange-600 transition line-clamp-1">{item.basicInfo?.title}</h3><p className="text-slate-500 mt-1 line-clamp-1">{item.basicInfo?.subtitle}</p></div>
-                    <div className="flex items-center gap-2 text-slate-500 mb-6 pb-6 border-b border-slate-100"><MapPin size={18} className="text-orange-500" /><span className="text-lg">{item.basicInfo?.address}</span></div>
-                    <div className="flex justify-between items-center"><span className="text-2xl font-black text-slate-900">{item.basicInfo?.price}</span><div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition"><ArrowRight size={20}/></div></div>
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
                   </div>
                 </Link>
               </motion.div>
@@ -151,7 +120,6 @@ const Home = () => {
           </div>
         )}
       </div>
-<<<<<<< HEAD
 
       {/* 最新動態預覽區塊 */}
       <div className="bg-slate-100 py-20 border-t border-slate-200">
@@ -163,12 +131,12 @@ const Home = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                {articles.length === 0 ? (
-                  <div className="col-span-3 text-center text-slate-400 py-10">暫無最新消息</div>
+                  <div className="col-span-3 text-center text-slate-400 py-10 bg-white rounded-xl border border-slate-200">目前尚無最新消息</div>
                ) : (
                   articles.map((article) => (
                      <Link to="/news" key={article.id} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition duration-300 group flex flex-col h-full">
                         <div className="h-48 overflow-hidden relative">
-                           {article.image ? <img src={article.image} className="w-full h-full object-cover transition duration-500 group-hover:scale-110"/> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400">NO IMAGE</div>}
+                           {article.image ? <img src={article.image} className="w-full h-full object-cover transition duration-500 group-hover:scale-110"/> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold">NEWS</div>}
                            <span className={`absolute top-4 left-4 px-2 py-1 text-xs text-white font-bold rounded ${article.category==='news'?'bg-blue-500':article.category==='academy'?'bg-green-500':'bg-purple-500'}`}>{article.category.toUpperCase()}</span>
                         </div>
                         <div className="p-6 flex-1 flex flex-col">
@@ -184,8 +152,6 @@ const Home = () => {
          </div>
       </div>
 
-=======
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
       <Footer />
     </div>
   );

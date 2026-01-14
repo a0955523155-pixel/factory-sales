@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
-<<<<<<< HEAD
 import { Menu, X, Phone, Factory, Newspaper, GraduationCap, Trophy, Home } from 'lucide-react';
-=======
-import { Menu, X, Phone, Factory, Activity } from 'lucide-react'; // 改用 Factory
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -19,25 +15,14 @@ const Navbar = ({ phone }) => {
     const fetchSettings = async () => {
       try {
         const docSnap = await getDoc(doc(db, "settings", "global"));
-<<<<<<< HEAD
         if (docSnap.exists()) setSettings(prev => ({...prev, ...docSnap.data()}));
-=======
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setSettings({
-            siteName: data.siteName || "Factory Pro",
-            contactPhone: data.contactPhone || phone || "0800-666-738"
-          });
-        }
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
       } catch(e) {}
     };
     fetchSettings();
   }, [phone]);
-<<<<<<< HEAD
 
   const navLinks = [
-    { name: '首頁', path: '/', icon: <Home size={18}/> }, // 名稱已更改
+    { name: '首頁', path: '/', icon: <Home size={18}/> },
     { name: '最新消息', path: '/news', icon: <Newspaper size={18}/> },
     { name: '房地產小學堂', path: '/academy', icon: <GraduationCap size={18}/> },
     { name: '成交案例', path: '/cases', icon: <Trophy size={18}/> },
@@ -45,19 +30,10 @@ const Navbar = ({ phone }) => {
 
   return (
     <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm font-sans">
-=======
-
-  return (
-    <nav className="fixed w-full z-50 top-0 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex justify-between items-center h-20">
           
           <Link to="/" className="flex items-center gap-3 group">
-<<<<<<< HEAD
-=======
-            {/* Logo 圖示更換為工廠 */}
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
             <div className="bg-slate-800 p-2 rounded-sm border-2 border-slate-600 group-hover:border-orange-500 group-hover:bg-slate-900 transition duration-300">
               <Factory className="text-orange-500 group-hover:text-white transition" size={24} />
             </div>
@@ -68,7 +44,7 @@ const Navbar = ({ phone }) => {
             </div>
           </Link>
 
-<<<<<<< HEAD
+          {/* 電腦版選單 */}
           <div className="hidden lg:flex items-center space-x-6 font-bold text-sm">
             {navLinks.map((link) => (
               <Link key={link.path} to={link.path} className="flex items-center gap-2 text-slate-600 hover:text-orange-600 transition tracking-wider">
@@ -83,20 +59,6 @@ const Navbar = ({ phone }) => {
           </div>
 
           <div className="lg:hidden">
-=======
-          <div className="hidden md:flex items-center space-x-8 font-mono font-bold">
-            <Link to="/" className="text-slate-600 hover:text-orange-600 transition uppercase tracking-wider flex items-center gap-2 text-lg">
-              <Activity size={20} /> 物件列表
-            </Link>
-            
-            <a href={`tel:${settings.contactPhone}`} className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2 rounded hover:bg-orange-600 transition duration-300 shadow-lg group">
-              <Phone size={18} className="group-hover:animate-bounce"/>
-              <span className="text-lg tracking-wider">{settings.contactPhone}</span>
-            </a>
-          </div>
-
-          <div className="md:hidden">
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
             <button onClick={() => setIsOpen(!isOpen)} className="text-slate-800">
               {isOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
@@ -104,8 +66,8 @@ const Navbar = ({ phone }) => {
         </div>
       </div>
       
+      {/* 手機版選單 */}
       {isOpen && (
-<<<<<<< HEAD
          <div className="lg:hidden bg-white border-t border-slate-100 absolute w-full left-0 shadow-xl p-4 flex flex-col gap-2">
             {navLinks.map((link) => (
               <Link key={link.path} to={link.path} className="flex items-center gap-3 py-3 px-4 text-slate-800 font-bold hover:bg-slate-50 rounded" onClick={() => setIsOpen(false)}>
@@ -113,11 +75,6 @@ const Navbar = ({ phone }) => {
               </Link>
             ))}
             <a href={`tel:${settings.contactPhone}`} className="block py-3 px-4 text-orange-600 font-bold border-t border-slate-100 mt-2">撥打電話: {settings.contactPhone}</a>
-=======
-         <div className="md:hidden bg-white border-t border-slate-100 absolute w-full left-0 shadow-xl p-4">
-            <Link to="/" className="block py-3 px-4 text-slate-800 font-bold hover:bg-slate-50 rounded">物件列表</Link>
-            <a href={`tel:${settings.contactPhone}`} className="block py-3 px-4 text-orange-600 font-bold">撥打電話: {settings.contactPhone}</a>
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
          </div>
       )}
     </nav>
