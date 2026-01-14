@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, setDoc, getDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { X, Plus, Trash2, Layout, Users, Settings, Map as MapIcon, Upload, Languages, FileText, Sparkles, LogIn, GripVertical, ChevronUp, ChevronDown, RefreshCcw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // 引入跳轉 Hook
+import { X, Plus, Trash2, Layout, Users, Settings, Map as MapIcon, Upload, Languages, FileText, Sparkles, LogIn, LogOut, GripVertical, ChevronUp, ChevronDown, RefreshCcw } from 'lucide-react';
 
 const safeStr = (val) => (val === undefined || val === null) ? "" : String(val);
 
-// --- 圖片壓縮 + 自動浮水印 ---
 const compressImage = (file) => {
   const watermarkText = "綠芽團隊0800666738.com";
   return new Promise((resolve) => {
@@ -27,7 +27,6 @@ const compressImage = (file) => {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        
         const fontSize = width * 0.025;
         ctx.font = `bold ${fontSize}px Arial`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -35,7 +34,6 @@ const compressImage = (file) => {
         ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
         ctx.shadowBlur = 4;
         ctx.fillText(watermarkText, width - 20, height - 20);
-
         resolve(canvas.toDataURL('image/jpeg', 0.8));
       };
     };
@@ -43,6 +41,7 @@ const compressImage = (file) => {
 };
 
 const Admin = () => {
+  const navigate = useNavigate(); // 初始化跳轉
   const [isAuth, setIsAuth] = useState(false);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
 
@@ -55,11 +54,9 @@ const Admin = () => {
   const [translating, setTranslating] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  // 拖曳排序相關
   const dragItem = useRef();
   const dragOverItem = useRef();
 
-  // 案場表單
   const [formData, setFormData] = useState({ 
     title: '', titleEN: '', subtitle: '', price: '', address: '', 
     agentPhone: '', agentName: '', lineId: '', lineQr: '', 
@@ -90,14 +87,24 @@ const Admin = () => {
     }
   }, []);
 
+  // --- 登入 ---
   const handleLogin = (e) => {
     e.preventDefault();
     if (loginForm.user === 'gst0800666738' && loginForm.pass === '0800666738') {
       setIsAuth(true);
-      localStorage.setItem('isAuth', 'true'); // 保持登入狀態
+      localStorage.setItem('isAuth', 'true'); 
       fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles();
     } else {
       alert("帳號或密碼錯誤");
+    }
+  };
+
+  // --- 登出 (新增) ---
+  const handleLogout = () => {
+    if (window.confirm("確定要登出管理後台嗎？")) {
+      setIsAuth(false);
+      localStorage.removeItem('isAuth');
+      navigate('/'); // 跳轉回首頁
     }
   };
 
@@ -108,7 +115,6 @@ const Admin = () => {
       const snap = await getDocs(collection(db, "articles")); 
       const list = []; 
       snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); 
-      // 預設依 order 排序，若無 order 則依日期 (新到舊)
       list.sort((a, b) => {
         if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
         return (b.createdAt || 0) - (a.createdAt || 0); 
@@ -120,21 +126,14 @@ const Admin = () => {
   const fetchGlobalSettings = async () => { try { const docSnap = await getDoc(doc(db, "settings", "global")); if (docSnap.exists()) setGlobalSettings(docSnap.data()); } catch (e) {} };
   const fetchCustomers = async () => { try { const snap = await getDocs(collection(db, "customers")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); setCustomers(list); } catch (e) {} };
 
-  // --- 手動排序 (上移/下移) ---
   const moveArticle = async (index, direction) => {
     const newItems = [...articles];
-    if (direction === 'up' && index > 0) {
-      [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
-    } else if (direction === 'down' && index < newItems.length - 1) {
-      [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-    } else {
-      return;
-    }
-    setArticles(newItems);
-    saveOrder(newItems);
+    if (direction === 'up' && index > 0) { [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]]; } 
+    else if (direction === 'down' && index < newItems.length - 1) { [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]; } 
+    else { return; }
+    setArticles(newItems); saveOrder(newItems);
   };
 
-  // --- 拖曳排序 (電腦版) ---
   const handleDragStart = (e, position) => { dragItem.current = position; };
   const handleDragEnter = (e, position) => { dragOverItem.current = position; };
   const handleDragEnd = async () => {
@@ -142,30 +141,22 @@ const Admin = () => {
     const dragItemContent = copyListItems[dragItem.current];
     copyListItems.splice(dragItem.current, 1);
     copyListItems.splice(dragOverItem.current, 0, dragItemContent);
-    dragItem.current = null;
-    dragOverItem.current = null;
-    setArticles(copyListItems);
-    saveOrder(copyListItems);
+    dragItem.current = null; dragOverItem.current = null;
+    setArticles(copyListItems); saveOrder(copyListItems);
   };
 
-  // --- 儲存順序 ---
   const saveOrder = async (items) => {
     try {
       const batch = writeBatch(db);
-      items.forEach((item, index) => {
-        const ref = doc(db, "articles", item.id);
-        batch.update(ref, { order: index });
-      });
+      items.forEach((item, index) => { const ref = doc(db, "articles", item.id); batch.update(ref, { order: index }); });
       await batch.commit();
-    } catch (e) { console.error("排序儲存失敗", e); }
+    } catch (e) { console.error(e); }
   };
 
-  // --- 一鍵按日期重排 (新到舊) ---
   const resetOrderToDate = async () => {
-    if (!window.confirm("確定要依照「日期 (新到舊)」重新排序所有文章嗎？")) return;
+    if (!window.confirm("確定重排？")) return;
     const sorted = [...articles].sort((a, b) => new Date(b.date) - new Date(a.date));
-    setArticles(sorted);
-    saveOrder(sorted);
+    setArticles(sorted); saveOrder(sorted);
   };
 
   const handleTranslate = async () => {
@@ -217,21 +208,15 @@ const Admin = () => {
   
   const handleArticleSubmit = async (e) => { 
     e.preventDefault(); setLoading(true); 
-    // 新增時給予最小的 order (置頂)，或者由 Date 排序
     const payload = { ...articleForm, createdAt: Date.now(), updatedAt: new Date(), order: -Date.now() }; 
-    if (editArticleId) {
-        delete payload.order; // 編輯時不改變順序
-        await updateDoc(doc(db, "articles", editArticleId), payload); 
-    } else {
-        await addDoc(collection(db, "articles"), payload); 
-    }
+    if (editArticleId) { delete payload.order; await updateDoc(doc(db, "articles", editArticleId), payload); } 
+    else { await addDoc(collection(db, "articles"), payload); }
     alert("文章發布成功！"); setArticleForm({ category: 'news', title: '', content: '', date: '', image: '' }); setEditArticleId(null); fetchArticles(); setLoading(false); 
   };
 
   const inputStyle = "w-full bg-white border border-slate-300 text-slate-800 p-3 md:p-2.5 text-base md:text-sm focus:outline-none focus:border-orange-500 rounded-lg shadow-sm transition placeholder:text-slate-300";
   const labelStyle = "block text-xs font-bold text-slate-500 mb-1.5 tracking-wider uppercase";
 
-  // --- 登入畫面 (修正：增加 autocomplete) ---
   if (!isAuth) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-100 px-4">
@@ -256,13 +241,18 @@ const Admin = () => {
       <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col shrink-0">
         <div className="p-4 md:p-5 flex justify-between items-center lg:block">
            <h2 className="font-black text-xl text-slate-900 tracking-tight">綠芽管理員</h2>
-           <span className="lg:hidden text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold">{viewMode.toUpperCase()}</span>
+           {/* 平板/手機 登出按鈕 (右上) */}
+           <button onClick={handleLogout} className="lg:hidden text-slate-400 hover:text-red-500"><LogOut size={20}/></button>
         </div>
         <div className="flex lg:flex-col gap-2 p-2 overflow-x-auto lg:overflow-visible scrollbar-hide">
             <button onClick={() => setViewMode('properties')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'properties' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Layout size={18}/> 案場管理</button>
             <button onClick={() => setViewMode('articles')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'articles' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><FileText size={18}/> 文章管理</button>
             <button onClick={() => setViewMode('customers')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'customers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Users size={18}/> 客戶資料</button>
             <button onClick={() => setViewMode('settings')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'settings' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Settings size={18}/> 網站設定</button>
+        </div>
+        {/* 電腦版 登出按鈕 (底部) */}
+        <div className="mt-auto p-4 hidden lg:block border-t border-slate-100">
+           <button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-sm font-bold transition w-full px-4 py-2 hover:bg-red-50 rounded-xl"><LogOut size={18}/> 登出系統</button>
         </div>
         {viewMode === 'properties' && (
           <div className="flex-1 overflow-y-auto p-3 space-y-2 border-t lg:border-t-0 border-slate-100 hidden lg:block">
@@ -277,7 +267,6 @@ const Admin = () => {
         
         {viewMode === 'customers' && (<div className="p-6 md:p-10 w-full max-w-7xl mx-auto overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">客戶諮詢資料表</h1><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="p-5">日期</th><th className="p-5">姓名</th><th className="p-5">電話</th><th className="p-5">行業</th><th className="p-5">需求</th><th className="p-5">坪數</th></tr></thead><tbody>{customers.map(c => (<tr key={c.id} className="border-b border-slate-100 hover:bg-orange-50/50 transition"><td className="p-5 font-mono text-slate-400">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</td><td className="p-5 font-bold text-slate-800">{c.name}</td><td className="p-5 text-orange-600 font-bold">{c.phone}</td><td className="p-5">{c.industry}</td><td className="p-5"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{c.needs}</span></td><td className="p-5">{c.ping}</td></tr>))}</tbody></table></div></div>)}
         
-        {/* --- 文章管理 (新增手機版排序按鈕) --- */}
         {viewMode === 'articles' && (
           <div className="flex flex-col md:flex-row h-full">
              <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-4 overflow-y-auto shrink-0 max-h-[40vh] md:max-h-full">
@@ -285,7 +274,7 @@ const Admin = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center mb-2 px-1">
                      <p className="text-xs text-slate-400">可拖曳或點擊箭頭排序</p>
-                     <button onClick={resetOrderToDate} className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"><RefreshCcw size={10}/> 按日期重排 (新→舊)</button>
+                     <button onClick={resetOrderToDate} className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"><RefreshCcw size={10}/> 按日期重排</button>
                   </div>
                   {articles.map((a, index) => (
                      <div 
@@ -297,14 +286,11 @@ const Admin = () => {
                        onClick={()=>loadEditArticle(a)} 
                        className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}
                      >
-                        {/* 手機排序按鈕 */}
                         <div className="flex flex-col gap-1 md:hidden">
                            <button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button>
                            <button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button>
                         </div>
-                        {/* 電腦拖曳把手 */}
                         <GripVertical size={16} className="text-slate-300 hidden md:block"/>
-                        
                         <div className="flex-1 min-w-0">
                            <span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 ${a.category==='news'?'bg-blue-500':a.category==='academy'?'bg-green-500':'bg-purple-500'}`}>{a.category.toUpperCase()}</span>
                            <div className="font-bold text-slate-800 line-clamp-1 text-sm">{a.title}</div>
@@ -328,7 +314,6 @@ const Admin = () => {
           </div>
         )}
 
-        {/* --- 案場編輯 (內容保持不變) --- */}
         {viewMode === 'properties' && (
           <>
             <div className="lg:hidden p-2 bg-white border-b overflow-x-auto flex gap-2"><button onClick={resetForm} className="bg-orange-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs shrink-0">+ 新增</button>{properties.map(p => (<button key={p.id} onClick={() => loadEdit(p)} className={`px-3 py-1.5 rounded-lg border text-xs font-bold shrink-0 whitespace-nowrap ${editId === p.id ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-slate-50 border-slate-200'}`}>{p.basicInfo.title.substring(0, 6)}...</button>))}</div>
