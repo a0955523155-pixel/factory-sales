@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, setDoc, getDoc, deleteDoc, writeBatch } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom'; // 引入跳轉 Hook
+import { useNavigate } from 'react-router-dom';
 import { X, Plus, Trash2, Layout, Users, Settings, Map as MapIcon, Upload, Languages, FileText, Sparkles, LogIn, LogOut, GripVertical, ChevronUp, ChevronDown, RefreshCcw } from 'lucide-react';
 
 const safeStr = (val) => (val === undefined || val === null) ? "" : String(val);
@@ -41,10 +41,9 @@ const compressImage = (file) => {
 };
 
 const Admin = () => {
-  const navigate = useNavigate(); // 初始化跳轉
+  const navigate = useNavigate();
   const [isAuth, setIsAuth] = useState(false);
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
-
   const [viewMode, setViewMode] = useState('properties'); 
   const [properties, setProperties] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -53,143 +52,71 @@ const Admin = () => {
   const [compressing, setCompressing] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [editId, setEditId] = useState(null);
-
   const dragItem = useRef();
   const dragOverItem = useRef();
 
+  // 案場表單 (新增 description)
   const [formData, setFormData] = useState({ 
-    title: '', titleEN: '', subtitle: '', price: '', address: '', 
+    title: '', titleEN: '', subtitle: '', description: '', // description 是那段長文字
+    price: '', address: '', city: '高雄', propertyType: '工業地', usageType: '買賣',
     agentPhone: '', agentName: '', lineId: '', lineQr: '', 
     googleMapUrl: '', thumb: '', images: [] 
   });
-  const [specs, setSpecs] = useState([{ id: 's1', label: "總建坪", value: "" }]);
+  const [specs, setSpecs] = useState([{ id: 's1', label: "使用分區", value: "乙種工業區" }]);
   const [features, setFeatures] = useState([{ id: 'f1', title: "特色標題", desc: "" }]);
-  const [concept, setConcept] = useState({ title: "建築理念", content: "", image: "" }); 
   const [envList, setEnvList] = useState([{ id: 'e1', title: "", desc: "", image: "", link: "" }]);
   const [progressList, setProgressList] = useState([{ id: 'p1', date: '', status: '' }]);
   const [units, setUnits] = useState([{ id: 'u1', number: '', ping: '', price: '', status: 'available', layout: '' }]);
 
-  const [articleForm, setArticleForm] = useState({ category: 'news', title: '', content: '', date: '', image: '' });
+  const [articleForm, setArticleForm] = useState({ category: 'news_local', title: '', content: '', date: '', image: '' });
   const [editArticleId, setEditArticleId] = useState(null);
 
+  // 全站設定 (新增社群連結與圖示)
   const [globalSettings, setGlobalSettings] = useState({
     siteName: "Factory Pro",
     heroTitleCN: "未來工廠",
     heroTitleEN: "FUTURE FACTORY",
-    contactPhone: "0800-666-738"
+    contactPhone: "0800-666-738",
+    fbLink: "", igLink: "", lineLink: "", // 連結
+    iconFB: "", iconIG: "", iconLINE: ""  // 自訂圖示
   });
 
-  useEffect(() => { 
-    const storedAuth = localStorage.getItem('isAuth');
-    if (storedAuth === 'true') {
-      setIsAuth(true);
-      fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles();
-    }
-  }, []);
+  useEffect(() => { const storedAuth = localStorage.getItem('isAuth'); if (storedAuth === 'true') { setIsAuth(true); fetchAllData(); } }, []);
 
-  // --- 登入 ---
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (loginForm.user === 'gst0800666738' && loginForm.pass === '0800666738') {
-      setIsAuth(true);
-      localStorage.setItem('isAuth', 'true'); 
-      fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles();
-    } else {
-      alert("帳號或密碼錯誤");
-    }
-  };
-
-  // --- 登出 (新增) ---
-  const handleLogout = () => {
-    if (window.confirm("確定要登出管理後台嗎？")) {
-      setIsAuth(false);
-      localStorage.removeItem('isAuth');
-      navigate('/'); // 跳轉回首頁
-    }
-  };
+  const fetchAllData = () => { fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles(); };
+  const handleLogin = (e) => { e.preventDefault(); if (loginForm.user === 'gst0800666738' && loginForm.pass === '0800666738') { setIsAuth(true); localStorage.setItem('isAuth', 'true'); fetchAllData(); } else { alert("帳號或密碼錯誤"); } };
+  const handleLogout = () => { if (window.confirm("登出？")) { setIsAuth(false); localStorage.removeItem('isAuth'); navigate('/'); } };
 
   const fetchProperties = async () => { try { const snap = await getDocs(collection(db, "properties")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); setProperties(list); } catch (e) {} };
-  
-  const fetchArticles = async () => { 
-    try { 
-      const snap = await getDocs(collection(db, "articles")); 
-      const list = []; 
-      snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); 
-      list.sort((a, b) => {
-        if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
-        return (b.createdAt || 0) - (a.createdAt || 0); 
-      });
-      setArticles(list); 
-    } catch (e) {} 
-  };
-  
+  const fetchArticles = async () => { try { const snap = await getDocs(collection(db, "articles")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); list.sort((a, b) => { if (a.order !== undefined && b.order !== undefined) return a.order - b.order; return (b.createdAt || 0) - (a.createdAt || 0); }); setArticles(list); } catch (e) {} };
   const fetchGlobalSettings = async () => { try { const docSnap = await getDoc(doc(db, "settings", "global")); if (docSnap.exists()) setGlobalSettings(docSnap.data()); } catch (e) {} };
   const fetchCustomers = async () => { try { const snap = await getDocs(collection(db, "customers")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); setCustomers(list); } catch (e) {} };
 
-  const moveArticle = async (index, direction) => {
-    const newItems = [...articles];
-    if (direction === 'up' && index > 0) { [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]]; } 
-    else if (direction === 'down' && index < newItems.length - 1) { [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]; } 
-    else { return; }
-    setArticles(newItems); saveOrder(newItems);
-  };
-
+  const moveArticle = async (index, direction) => { const newItems = [...articles]; if (direction === 'up' && index > 0) { [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]]; } else if (direction === 'down' && index < newItems.length - 1) { [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]; } else { return; } setArticles(newItems); saveOrder(newItems); };
   const handleDragStart = (e, position) => { dragItem.current = position; };
   const handleDragEnter = (e, position) => { dragOverItem.current = position; };
-  const handleDragEnd = async () => {
-    const copyListItems = [...articles];
-    const dragItemContent = copyListItems[dragItem.current];
-    copyListItems.splice(dragItem.current, 1);
-    copyListItems.splice(dragOverItem.current, 0, dragItemContent);
-    dragItem.current = null; dragOverItem.current = null;
-    setArticles(copyListItems); saveOrder(copyListItems);
-  };
+  const handleDragEnd = async () => { const copyListItems = [...articles]; const dragItemContent = copyListItems[dragItem.current]; copyListItems.splice(dragItem.current, 1); copyListItems.splice(dragOverItem.current, 0, dragItemContent); dragItem.current = null; dragOverItem.current = null; setArticles(copyListItems); saveOrder(copyListItems); };
+  const saveOrder = async (items) => { try { const batch = writeBatch(db); items.forEach((item, index) => { const ref = doc(db, "articles", item.id); batch.update(ref, { order: index }); }); await batch.commit(); } catch (e) {} };
+  const resetOrderToDate = async () => { if (!window.confirm("重排？")) return; const sorted = [...articles].sort((a, b) => new Date(b.date) - new Date(a.date)); setArticles(sorted); saveOrder(sorted); };
 
-  const saveOrder = async (items) => {
-    try {
-      const batch = writeBatch(db);
-      items.forEach((item, index) => { const ref = doc(db, "articles", item.id); batch.update(ref, { order: index }); });
-      await batch.commit();
-    } catch (e) { console.error(e); }
-  };
-
-  const resetOrderToDate = async () => {
-    if (!window.confirm("確定重排？")) return;
-    const sorted = [...articles].sort((a, b) => new Date(b.date) - new Date(a.date));
-    setArticles(sorted); saveOrder(sorted);
-  };
-
-  const handleTranslate = async () => {
-    if (!formData.title) return alert("請先輸入中文主標題");
-    setTranslating(true);
-    try {
-      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(formData.title)}&langpair=zh-TW|en`);
-      const data = await response.json();
-      if (data.responseData.translatedText) setFormData(prev => ({ ...prev, titleEN: data.responseData.translatedText }));
-    } catch (error) {}
-    setTranslating(false);
-  };
-
-  const handleAIWrite = () => {
-    if (!articleForm.title) return alert("請先輸入文章標題");
-    const templates = [`【${articleForm.title}】\n\n隨著產業需求日益增長，本項目正式公開。這不僅是該區域的指標性發展，更為在地產業鏈帶來全新的升級契機。\n\n根據最新市場分析，此類產品目前供不應求。我們特別規劃了彈性的空間配置，滿足不同企業規模的需求。`];
-    setArticleForm(prev => ({ ...prev, content: templates[0] }));
-  };
-
-  const handleSaveSettings = async () => { setLoading(true); await setDoc(doc(db, "settings", "global"), globalSettings); alert("設定已更新"); window.location.reload(); setLoading(false); };
-  const handleDeleteProperty = async (e, id) => { e.stopPropagation(); if (!window.confirm("確定刪除此案場？")) return; await deleteDoc(doc(db, "properties", id)); fetchProperties(); };
-  const handleDeleteArticle = async (id) => { if (!window.confirm("確定刪除此文章？")) return; await deleteDoc(doc(db, "articles", id)); fetchArticles(); };
+  const handleTranslate = async () => { if (!formData.title) return alert("請先輸入中文"); setTranslating(true); try { const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(formData.title)}&langpair=zh-TW|en`); const data = await response.json(); if (data.responseData.translatedText) setFormData(prev => ({ ...prev, titleEN: data.responseData.translatedText })); } catch (error) {} setTranslating(false); };
+  const handleAIWrite = () => { if (!articleForm.title) return alert("請輸入標題"); const templates = [`【${articleForm.title}】\n\n隨著產業需求增長...`]; setArticleForm(prev => ({ ...prev, content: templates[0] })); };
+  const handleSaveSettings = async () => { setLoading(true); await setDoc(doc(db, "settings", "global"), globalSettings); alert("已更新"); window.location.reload(); setLoading(false); };
+  const handleDeleteProperty = async (e, id) => { e.stopPropagation(); if (!window.confirm("刪除？")) return; await deleteDoc(doc(db, "properties", id)); fetchProperties(); };
+  const handleDeleteArticle = async (id) => { if (!window.confirm("刪除？")) return; await deleteDoc(doc(db, "articles", id)); fetchArticles(); };
 
   const loadEdit = (item) => {
     setEditId(item.id); const info = item.basicInfo || {};
     setFormData({
       title: safeStr(info.title), titleEN: safeStr(info.titleEN), subtitle: safeStr(info.subtitle),
-      price: safeStr(info.price), address: safeStr(info.address), agentPhone: safeStr(info.agentPhone), agentName: safeStr(info.agentName),
+      description: safeStr(info.description), // 載入描述
+      price: safeStr(info.price), address: safeStr(info.address), 
+      city: safeStr(info.city) || '高雄', propertyType: safeStr(info.propertyType) || '工業地', usageType: safeStr(info.usageType) || '買賣',
+      agentPhone: safeStr(info.agentPhone), agentName: safeStr(info.agentName),
       lineId: safeStr(info.lineId), lineQr: safeStr(info.lineQr), googleMapUrl: safeStr(info.googleMapUrl),
       thumb: safeStr(info.thumb), images: Array.isArray(info.images) ? info.images : []
     });
     setSpecs(Array.isArray(item.specs) ? item.specs : []); setFeatures(Array.isArray(item.features) ? item.features : []);
-    setConcept({ title: safeStr(item.concept?.title), content: safeStr(item.concept?.content), image: safeStr(item.concept?.image) });
     setEnvList(item.environmentList || []); setProgressList(item.progressHistory || []); setUnits(item.units || []);
   };
 
@@ -198,138 +125,72 @@ const Admin = () => {
 
   const resetForm = () => {
     setEditId(null);
-    setFormData({ title: '', titleEN: '', subtitle: '', price: '', address: '', agentPhone: '', agentName: '', lineId: '', lineQr: '', googleMapUrl: '', thumb: '', images: [] });
-    setSpecs([{ id: `s-${Date.now()}`, label: "總建坪", value: "" }]); setFeatures([{ id: `f-${Date.now()}`, title: "特色標題", desc: "" }]);
-    setConcept({ title: "建築理念", content: "", image: "" }); setEnvList([{ id: `e-${Date.now()}`, title: "", desc: "", image: "", link: "" }]);
+    setFormData({ title: '', titleEN: '', subtitle: '', description: '', price: '', address: '', city: '高雄', propertyType: '工業地', usageType: '買賣', agentPhone: '', agentName: '', lineId: '', lineQr: '', googleMapUrl: '', thumb: '', images: [] });
+    setSpecs([{ id: `s-${Date.now()}`, label: "使用分區", value: "乙種工業區" }]); setFeatures([{ id: `f-${Date.now()}`, title: "特色標題", desc: "" }]);
+    setEnvList([{ id: `e-${Date.now()}`, title: "", desc: "", image: "", link: "" }]);
     setProgressList([{ id: `p-${Date.now()}`, date: "", status: "" }]); setUnits([{ id: `u-${Date.now()}`, number: '', ping: '', price: '', status: 'available', layout: '' }]);
   };
 
-  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); const payload = { basicInfo: formData, specs, features, concept, environmentList: envList, progressHistory: progressList, units, images: formData.images, updatedAt: new Date() }; if (editId) await updateDoc(doc(db, "properties", editId), payload); else await addDoc(collection(db, "properties"), payload); alert("儲存成功！"); window.location.reload(); setLoading(false); };
-  
-  const handleArticleSubmit = async (e) => { 
-    e.preventDefault(); setLoading(true); 
-    const payload = { ...articleForm, createdAt: Date.now(), updatedAt: new Date(), order: -Date.now() }; 
-    if (editArticleId) { delete payload.order; await updateDoc(doc(db, "articles", editArticleId), payload); } 
-    else { await addDoc(collection(db, "articles"), payload); }
-    alert("文章發布成功！"); setArticleForm({ category: 'news', title: '', content: '', date: '', image: '' }); setEditArticleId(null); fetchArticles(); setLoading(false); 
-  };
+  const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); const payload = { basicInfo: formData, specs, features, environmentList: envList, progressHistory: progressList, units, images: formData.images, updatedAt: new Date() }; if (editId) await updateDoc(doc(db, "properties", editId), payload); else await addDoc(collection(db, "properties"), payload); alert("儲存成功！"); window.location.reload(); setLoading(false); };
+  const handleArticleSubmit = async (e) => { e.preventDefault(); setLoading(true); const payload = { ...articleForm, createdAt: Date.now(), updatedAt: new Date(), order: -Date.now() }; if (editArticleId) { delete payload.order; await updateDoc(doc(db, "articles", editArticleId), payload); } else { await addDoc(collection(db, "articles"), payload); } alert("發布成功！"); setArticleForm({ category: 'news_local', title: '', content: '', date: '', image: '' }); setEditArticleId(null); fetchArticles(); setLoading(false); };
 
   const inputStyle = "w-full bg-white border border-slate-300 text-slate-800 p-3 md:p-2.5 text-base md:text-sm focus:outline-none focus:border-orange-500 rounded-lg shadow-sm transition placeholder:text-slate-300";
   const labelStyle = "block text-xs font-bold text-slate-500 mb-1.5 tracking-wider uppercase";
 
-  if (!isAuth) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-slate-100 px-4">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-slate-200">
-          <div className="text-center mb-8">
-             <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white"><LogIn size={32}/></div>
-             <h1 className="text-2xl font-black text-slate-900">綠芽管理員登入</h1>
-             <p className="text-slate-400 text-sm mt-1">請輸入專屬帳號密碼</p>
-          </div>
-          <div className="space-y-4">
-             <input type="text" placeholder="帳號" value={loginForm.user} onChange={e=>setLoginForm({...loginForm, user:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" autoComplete="username" />
-             <input type="password" placeholder="密碼" value={loginForm.pass} onChange={e=>setLoginForm({...loginForm, pass:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" autoComplete="current-password" />
-             <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition shadow-lg">登入系統</button>
-          </div>
-        </form>
-      </div>
-    );
-  }
+  if (!isAuth) return ( <div className="h-screen flex items-center justify-center bg-slate-100 px-4"><form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-slate-200"><div className="text-center mb-8"><div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white"><LogIn size={32}/></div><h1 className="text-2xl font-black text-slate-900">綠芽管理員登入</h1></div><div className="space-y-4"><input type="text" placeholder="帳號" value={loginForm.user} onChange={e=>setLoginForm({...loginForm, user:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" autoComplete="username" /><input type="password" placeholder="密碼" value={loginForm.pass} onChange={e=>setLoginForm({...loginForm, pass:e.target.value})} className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none" autoComplete="current-password" /><button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition shadow-lg">登入系統</button></div></form></div> );
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-slate-100 text-slate-800 font-sans overflow-hidden">
       <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col shrink-0">
-        <div className="p-4 md:p-5 flex justify-between items-center lg:block">
-           <h2 className="font-black text-xl text-slate-900 tracking-tight">綠芽管理員</h2>
-           {/* 平板/手機 登出按鈕 (右上) */}
-           <button onClick={handleLogout} className="lg:hidden text-slate-400 hover:text-red-500"><LogOut size={20}/></button>
-        </div>
+        <div className="p-4 md:p-5 flex justify-between items-center lg:block"><h2 className="font-black text-xl text-slate-900 tracking-tight">綠芽管理員</h2><button onClick={handleLogout} className="lg:hidden text-slate-400 hover:text-red-500"><LogOut size={20}/></button></div>
         <div className="flex lg:flex-col gap-2 p-2 overflow-x-auto lg:overflow-visible scrollbar-hide">
             <button onClick={() => setViewMode('properties')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'properties' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Layout size={18}/> 案場管理</button>
             <button onClick={() => setViewMode('articles')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'articles' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><FileText size={18}/> 文章管理</button>
             <button onClick={() => setViewMode('customers')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'customers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Users size={18}/> 客戶資料</button>
             <button onClick={() => setViewMode('settings')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'settings' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Settings size={18}/> 網站設定</button>
         </div>
-        {/* 電腦版 登出按鈕 (底部) */}
-        <div className="mt-auto p-4 hidden lg:block border-t border-slate-100">
-           <button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-sm font-bold transition w-full px-4 py-2 hover:bg-red-50 rounded-xl"><LogOut size={18}/> 登出系統</button>
-        </div>
-        {viewMode === 'properties' && (
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 border-t lg:border-t-0 border-slate-100 hidden lg:block">
-            <button onClick={resetForm} className="w-full py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 mb-4 shadow">+ 新增案場</button>
-            {properties.map(p => (<div key={p.id} onClick={() => loadEdit(p)} className={`p-3 border cursor-pointer hover:bg-white rounded-xl flex justify-between items-center group transition ${editId === p.id ? 'border-orange-500 bg-white shadow-md' : 'border-slate-100 bg-slate-50'}`}><div className="font-bold text-sm truncate w-32 text-slate-700">{p.basicInfo.title}</div><button onClick={(e) => handleDeleteProperty(e, p.id)} className="text-slate-300 hover:text-red-500 p-1"><Trash2 size={14} /></button></div>))}
-          </div>
-        )}
+        <div className="mt-auto p-4 hidden lg:block border-t border-slate-100"><button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-sm font-bold transition w-full px-4 py-2 hover:bg-red-50 rounded-xl"><LogOut size={18}/> 登出系統</button></div>
+        {viewMode === 'properties' && (<div className="flex-1 overflow-y-auto p-3 space-y-2 border-t lg:border-t-0 border-slate-100 hidden lg:block"><button onClick={resetForm} className="w-full py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 mb-4 shadow">+ 新增案場</button>{properties.map(p => (<div key={p.id} onClick={() => loadEdit(p)} className={`p-3 border cursor-pointer hover:bg-white rounded-xl flex justify-between items-center group transition ${editId === p.id ? 'border-orange-500 bg-white shadow-md' : 'border-slate-100 bg-slate-50'}`}><div className="font-bold text-sm truncate w-32 text-slate-700">{p.basicInfo.title}</div><button onClick={(e) => handleDeleteProperty(e, p.id)} className="text-slate-300 hover:text-red-500 p-1"><Trash2 size={14} /></button></div>))}</div>)}
       </div>
 
       <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
-        {viewMode === 'settings' && (<div className="p-6 md:p-10 max-w-3xl mx-auto w-full overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">網站全域設定</h1><div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6"><div><label className={labelStyle}>左上角網站名稱</label><input value={globalSettings.siteName} onChange={e=>setGlobalSettings({...globalSettings, siteName: e.target.value})} className={inputStyle} placeholder="例: Factory Pro" /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>首頁大標題 (中文)</label><input value={globalSettings.heroTitleCN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleCN: e.target.value})} className={inputStyle} placeholder="例: 未來工廠" /></div><div><label className={labelStyle}>首頁大標題 (英文)</label><input value={globalSettings.heroTitleEN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleEN: e.target.value})} className={inputStyle} placeholder="例: FUTURE FACTORY" /></div></div><div><label className={labelStyle}>全站聯絡電話</label><input value={globalSettings.contactPhone} onChange={e=>setGlobalSettings({...globalSettings, contactPhone: e.target.value})} className={inputStyle} placeholder="例: 0800-666-738" /></div><button onClick={handleSaveSettings} disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-orange-600 transition shadow-lg mt-4">{loading ? "處理中..." : "儲存設定"}</button></div></div>)}
-        
-        {viewMode === 'customers' && (<div className="p-6 md:p-10 w-full max-w-7xl mx-auto overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">客戶諮詢資料表</h1><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="p-5">日期</th><th className="p-5">姓名</th><th className="p-5">電話</th><th className="p-5">行業</th><th className="p-5">需求</th><th className="p-5">坪數</th></tr></thead><tbody>{customers.map(c => (<tr key={c.id} className="border-b border-slate-100 hover:bg-orange-50/50 transition"><td className="p-5 font-mono text-slate-400">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</td><td className="p-5 font-bold text-slate-800">{c.name}</td><td className="p-5 text-orange-600 font-bold">{c.phone}</td><td className="p-5">{c.industry}</td><td className="p-5"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{c.needs}</span></td><td className="p-5">{c.ping}</td></tr>))}</tbody></table></div></div>)}
-        
-        {viewMode === 'articles' && (
-          <div className="flex flex-col md:flex-row h-full">
-             <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-4 overflow-y-auto shrink-0 max-h-[40vh] md:max-h-full">
-                <button onClick={() => {setEditArticleId(null); setArticleForm({ category: 'news', title: '', content: '', date: '', image: '' });}} className="w-full bg-slate-900 text-white py-3 rounded-lg mb-4 text-sm font-bold shadow hover:bg-black transition">+ 撰寫新文章</button>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center mb-2 px-1">
-                     <p className="text-xs text-slate-400">可拖曳或點擊箭頭排序</p>
-                     <button onClick={resetOrderToDate} className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"><RefreshCcw size={10}/> 按日期重排</button>
-                  </div>
-                  {articles.map((a, index) => (
-                     <div 
-                       key={a.id} 
-                       draggable 
-                       onDragStart={(e) => handleDragStart(e, index)}
-                       onDragEnter={(e) => handleDragEnter(e, index)}
-                       onDragEnd={handleDragEnd}
-                       onClick={()=>loadEditArticle(a)} 
-                       className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}
-                     >
-                        <div className="flex flex-col gap-1 md:hidden">
-                           <button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button>
-                           <button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button>
-                        </div>
-                        <GripVertical size={16} className="text-slate-300 hidden md:block"/>
-                        <div className="flex-1 min-w-0">
-                           <span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 ${a.category==='news'?'bg-blue-500':a.category==='academy'?'bg-green-500':'bg-purple-500'}`}>{a.category.toUpperCase()}</span>
-                           <div className="font-bold text-slate-800 line-clamp-1 text-sm">{a.title}</div>
-                        </div>
-                        <button onClick={(e) => {e.stopPropagation(); handleDeleteArticle(a.id);}} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
-                     </div>
-                  ))}
+        {viewMode === 'settings' && (
+          <div className="p-6 md:p-10 max-w-3xl mx-auto w-full overflow-y-auto">
+             <h1 className="text-2xl md:text-3xl font-black mb-8">網站全域設定</h1>
+             <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                <div><label className={labelStyle}>左上角網站名稱</label><input value={globalSettings.siteName} onChange={e=>setGlobalSettings({...globalSettings, siteName: e.target.value})} className={inputStyle} /></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>首頁大標題 (中文)</label><input value={globalSettings.heroTitleCN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleCN: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>首頁大標題 (英文)</label><input value={globalSettings.heroTitleEN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleEN: e.target.value})} className={inputStyle} /></div></div>
+                <div><label className={labelStyle}>全站聯絡電話</label><input value={globalSettings.contactPhone} onChange={e=>setGlobalSettings({...globalSettings, contactPhone: e.target.value})} className={inputStyle} /></div>
+                
+                <h3 className="font-black border-l-4 border-orange-500 pl-2 mt-4">社群連結與圖示</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div><label className={labelStyle}>Facebook 連結</label><input value={globalSettings.fbLink} onChange={e=>setGlobalSettings({...globalSettings, fbLink: e.target.value})} className={inputStyle} /></div>
+                   <div><label className={labelStyle}>FB 圖示 (可上傳)</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconFB: url}))} className="text-xs"/>{globalSettings.iconFB && <img src={globalSettings.iconFB} className="h-8 w-8 rounded-full border"/>}</div>
+                   <div><label className={labelStyle}>Instagram 連結</label><input value={globalSettings.igLink} onChange={e=>setGlobalSettings({...globalSettings, igLink: e.target.value})} className={inputStyle} /></div>
+                   <div><label className={labelStyle}>IG 圖示 (可上傳)</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconIG: url}))} className="text-xs"/>{globalSettings.iconIG && <img src={globalSettings.iconIG} className="h-8 w-8 rounded-full border"/>}</div>
+                   <div><label className={labelStyle}>LINE 連結</label><input value={globalSettings.lineLink} onChange={e=>setGlobalSettings({...globalSettings, lineLink: e.target.value})} className={inputStyle} /></div>
+                   <div><label className={labelStyle}>LINE 圖示 (可上傳)</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconLINE: url}))} className="text-xs"/>{globalSettings.iconLINE && <img src={globalSettings.iconLINE} className="h-8 w-8 rounded-full border"/>}</div>
                 </div>
-             </div>
-             <div className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50">
-                <div className="max-w-3xl mx-auto">
-                   <div className="flex justify-between items-center mb-8"><h2 className="text-2xl md:text-3xl font-black">{editArticleId ? '編輯文章' : '新增文章'}</h2><button onClick={handleArticleSubmit} disabled={loading} className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-500 shadow-lg transition text-sm">{loading ? "發布中..." : "確認發布"}</button></div>
-                   <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>文章分類</label><select value={articleForm.category} onChange={e=>setArticleForm({...articleForm, category: e.target.value})} className={inputStyle}><option value="news">市場最新消息</option><option value="academy">房地產小學堂</option><option value="cases">成交案例分享</option></select></div><div><label className={labelStyle}>發布日期</label><input type="date" value={articleForm.date} onChange={e=>setArticleForm({...articleForm, date: e.target.value})} className={inputStyle}/></div></div>
-                      <div><label className={labelStyle}>文章標題</label><input value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} className={inputStyle} placeholder="請輸入吸引人的標題..."/></div>
-                      <div className="relative"> <div className="flex justify-between items-center mb-1"> <label className={labelStyle}>文章內容</label> <button type="button" onClick={handleAIWrite} className="text-xs flex items-center gap-1 text-purple-600 font-bold hover:text-purple-800 bg-purple-50 px-2 py-1 rounded transition"><Sparkles size={12}/> AI 自動撰寫</button> </div> <textarea value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} className={`${inputStyle} h-64 leading-relaxed`} placeholder="輸入內容，或點擊 AI 自動撰寫..."/></div>
-                      <div><label className={labelStyle}>封面圖片 (自動壓浮水印)</label><div className="flex items-center gap-4"><label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-bold text-slate-600 transition"><Upload size={16}/> 上傳圖片 <input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>setArticleForm({...articleForm, image: url}))}/></label>{articleForm.image && <img src={articleForm.image} className="h-20 w-32 object-cover rounded-lg border border-slate-200 shadow-sm"/>}</div></div>
-                   </div>
-                </div>
+
+                <button onClick={handleSaveSettings} disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-orange-600 transition shadow-lg mt-4">{loading ? "處理中..." : "儲存設定"}</button>
              </div>
           </div>
         )}
-
+        
+        {viewMode === 'customers' && (<div className="p-6 md:p-10 w-full max-w-7xl mx-auto overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">客戶諮詢資料表</h1><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="p-5">日期</th><th className="p-5">姓名</th><th className="p-5">電話</th><th className="p-5">行業</th><th className="p-5">需求</th><th className="p-5">坪數</th></tr></thead><tbody>{customers.map(c => (<tr key={c.id} className="border-b border-slate-100 hover:bg-orange-50/50 transition"><td className="p-5 font-mono text-slate-400">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</td><td className="p-5 font-bold text-slate-800">{c.name}</td><td className="p-5 text-orange-600 font-bold">{c.phone}</td><td className="p-5">{c.industry}</td><td className="p-5"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{c.needs}</span></td><td className="p-5">{c.ping}</td></tr>))}</tbody></table></div></div>)}
+        {viewMode === 'articles' && (<div className="flex flex-col md:flex-row h-full"><div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-4 overflow-y-auto shrink-0 max-h-[40vh] md:max-h-full"><button onClick={() => {setEditArticleId(null); setArticleForm({ category: 'news_local', title: '', content: '', date: '', image: '' });}} className="w-full bg-slate-900 text-white py-3 rounded-lg mb-4 text-sm font-bold shadow hover:bg-black transition">+ 撰寫新文章</button><div className="space-y-2"><div className="flex justify-between items-center mb-2 px-1"><p className="text-xs text-slate-400">排序</p><button onClick={resetOrderToDate} className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"><RefreshCcw size={10}/> 重排</button></div>{articles.map((a, index) => (<div key={a.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onClick={()=>loadEditArticle(a)} className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}><div className="flex flex-col gap-1 md:hidden"><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button></div><GripVertical size={16} className="text-slate-300 hidden md:block"/><div className="flex-1 min-w-0"><span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 bg-gray-500`}>{a.category}</span><div className="font-bold text-slate-800 line-clamp-1 text-sm">{a.title}</div></div><button onClick={(e) => {e.stopPropagation(); handleDeleteArticle(a.id);}} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button></div>))}</div></div><div className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50"><div className="max-w-3xl mx-auto"><div className="flex justify-between items-center mb-8"><h2 className="text-2xl md:text-3xl font-black">{editArticleId ? '編輯文章' : '新增文章'}</h2><button onClick={handleArticleSubmit} disabled={loading} className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-500 shadow-lg transition text-sm">{loading ? "發布中..." : "確認發布"}</button></div><div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>文章分類</label><select value={articleForm.category} onChange={e=>setArticleForm({...articleForm, category: e.target.value})} className={inputStyle}><option value="news_local">最新消息-本地新聞</option><option value="news_project">最新消息-新案消息</option><option value="works">經典作品</option><option value="about">關於我們</option></select></div><div><label className={labelStyle}>發布日期</label><input type="date" value={articleForm.date} onChange={e=>setArticleForm({...articleForm, date: e.target.value})} className={inputStyle}/></div></div><div><label className={labelStyle}>文章標題</label><input value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} className={inputStyle} placeholder="請輸入吸引人的標題..."/></div><div className="relative"> <div className="flex justify-between items-center mb-1"> <label className={labelStyle}>文章內容</label> <button type="button" onClick={handleAIWrite} className="text-xs flex items-center gap-1 text-purple-600 font-bold hover:text-purple-800 bg-purple-50 px-2 py-1 rounded transition"><Sparkles size={12}/> AI 自動撰寫</button> </div> <textarea value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} className={`${inputStyle} h-64 leading-relaxed`} placeholder="輸入內容，或點擊 AI 自動撰寫..."/></div><div><label className={labelStyle}>封面圖片 (自動壓浮水印)</label><div className="flex items-center gap-4"><label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-bold text-slate-600 transition"><Upload size={16}/> 上傳圖片 <input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>setArticleForm({...articleForm, image: url}))}/></label>{articleForm.image && <img src={articleForm.image} className="h-20 w-32 object-cover rounded-lg border border-slate-200 shadow-sm"/>}</div></div></div></div></div></div>)}
         {viewMode === 'properties' && (
           <>
             <div className="lg:hidden p-2 bg-white border-b overflow-x-auto flex gap-2"><button onClick={resetForm} className="bg-orange-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs shrink-0">+ 新增</button>{properties.map(p => (<button key={p.id} onClick={() => loadEdit(p)} className={`px-3 py-1.5 rounded-lg border text-xs font-bold shrink-0 whitespace-nowrap ${editId === p.id ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-slate-50 border-slate-200'}`}>{p.basicInfo.title.substring(0, 6)}...</button>))}</div>
             <div className="p-4 border-b bg-white flex justify-between items-center px-4 md:px-8"><h1 className="font-bold text-lg md:text-xl">{editId ? '編輯模式' : '新增模式'}</h1><button onClick={handleSubmit} disabled={loading || compressing} className="bg-orange-600 text-white px-6 py-2 text-sm font-bold hover:bg-orange-500 rounded-xl shadow-lg shadow-orange-200 transition">{compressing ? '圖片處理中...' : loading ? '存檔中...' : '儲存專案'}</button></div>
             <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full">
                 <div className="space-y-10 pb-20">
-                  <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3 mb-6">基本資料</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="col-span-1 md:col-span-2"><label className={labelStyle}>標題</label><input value={formData.title} onChange={e=>setFormData({...formData, title:e.target.value})} className={inputStyle} placeholder="例如：台積電概念園區"/></div><div className="col-span-1 md:col-span-2"><div className="flex gap-2"><div className="flex-1"><label className={labelStyle}>英文標題 (AI)</label><input value={formData.titleEN} onChange={e=>setFormData({...formData, titleEN:e.target.value})} className={inputStyle} placeholder="點擊翻譯按鈕自動生成..."/></div><button onClick={handleTranslate} disabled={translating} className="mt-6 bg-slate-800 text-white px-4 rounded-lg text-sm font-bold hover:bg-black transition flex items-center gap-2">{translating?"...":<><Languages size={14}/> 翻譯</>}</button></div></div><div className="col-span-1 md:col-span-2"><label className={labelStyle}>副標題</label><input value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle:e.target.value})} className={inputStyle} placeholder="例如：稀有釋出，機會難得"/></div><div><label className={labelStyle}>價格</label><input value={formData.price} onChange={e=>setFormData({...formData, price:e.target.value})} className={inputStyle} placeholder="例如：1,880 萬"/></div><div><label className={labelStyle}>地址</label><input value={formData.address} onChange={e=>setFormData({...formData, address:e.target.value})} className={inputStyle} placeholder="例如：高雄市仁武區..."/></div><div className="col-span-1 md:col-span-2"><label className={labelStyle}><MapIcon size={12} className="inline mr-1"/> Google 地圖嵌入網址</label><input value={formData.googleMapUrl} onChange={e=>setFormData({...formData, googleMapUrl:e.target.value})} className={inputStyle} placeholder="貼上 iframe src 網址" /></div><div><label className={labelStyle}>經紀人電話</label><input value={formData.agentPhone} onChange={e=>setFormData({...formData, agentPhone:e.target.value})} className={inputStyle} placeholder="例如：0912-345-678"/></div><div><label className={labelStyle}>經紀人姓名</label><input value={formData.agentName} onChange={e=>setFormData({...formData, agentName:e.target.value})} className={inputStyle} placeholder="例如：王小明"/></div><div><label className={labelStyle}>LINE ID</label><input value={formData.lineId} onChange={e=>setFormData({...formData, lineId:e.target.value})} className={inputStyle} placeholder="例如：wang123"/></div><div><label className={labelStyle}>LINE QR 圖片</label><input type="file" onChange={e=>handleUpload(e, (url)=>setFormData({...formData, lineQr: url}))} className="text-xs"/></div><div className="col-span-1 md:col-span-2"><label className={labelStyle}>封面圖</label><input type="file" onChange={e=>handleUpload(e, (url)=>setFormData({...formData, thumb: url}))} className="text-xs"/></div></div></section>
-                  <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                    <div className="flex justify-between items-center mb-6"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">戶別銷控表 (Unit List)</h3><button onClick={()=>setUnits([...units, {id: Date.now(), number:'', ping:'', price:'', status:'available', layout:''}])} className="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-100 transition flex items-center gap-1"><Plus size={14}/> 新增戶別</button></div>
-                    <div className="space-y-4">
-                       <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 bg-slate-50 rounded-lg text-xs font-bold text-slate-500 uppercase"><div className="col-span-2">戶號</div><div className="col-span-2">坪數</div><div className="col-span-3">價格</div><div className="col-span-2">狀態</div><div className="col-span-2">平面圖</div><div className="col-span-1"></div></div>
-                       {units.map((u, i) => (<div key={i} className="flex flex-col md:grid md:grid-cols-12 gap-2 md:gap-4 items-start md:items-center p-4 border border-slate-100 rounded-lg hover:border-orange-200 transition bg-white shadow-sm md:shadow-none"><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">戶號</span><input value={u.number} onChange={e=>{const x=[...units];x[i].number=e.target.value;setUnits(x)}} className="w-full bg-slate-50 border-none rounded p-1.5 text-sm font-bold text-center" placeholder="A1"/></div><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">坪數</span><input value={u.ping} onChange={e=>{const x=[...units];x[i].ping=e.target.value;setUnits(x)}} className="w-full border-b border-slate-200 p-1 text-sm focus:outline-none focus:border-orange-500" placeholder="0"/></div><div className="w-full md:col-span-3 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">價格</span><input value={u.price} onChange={e=>{const x=[...units];x[i].price=e.target.value;setUnits(x)}} className="w-full border-b border-slate-200 p-1 text-sm focus:outline-none focus:border-orange-500" placeholder="價格"/></div><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">狀態</span><select value={u.status} onChange={e=>{const x=[...units];x[i].status=e.target.value;setUnits(x)}} className="w-full bg-white border border-slate-200 rounded p-1.5 text-xs"><option value="available">🟢 可銷售</option><option value="reserved">🟡 已預訂</option><option value="sold">🔴 已售出</option></select></div><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">圖檔</span><label className="cursor-pointer text-xs text-blue-500 hover:underline truncate block">{u.layout ? "✅ 已上傳" : "📤 上傳圖檔"}<input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>{const x=[...units];x[i].layout=url;setUnits(x)})}/></label></div><div className="w-full md:col-span-1 text-right mt-2 md:mt-0"><button onClick={()=>setUnits(units.filter((_,idx)=>idx!==i))} className="text-red-400 text-xs flex items-center justify-end gap-1 md:justify-center w-full"><Trash2 size={14}/> 刪除</button></div></div>))}
-                    </div>
-                  </section>
+                  <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3 mb-6">基本資料</h3>
+                    <div className="mb-4"><label className={labelStyle}>物件介紹 (詳細描述)</label><textarea value={formData.description} onChange={e=>setFormData({...formData, description:e.target.value})} className={`${inputStyle} h-32`} placeholder="稀有釋出，頂規資產配置..." /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="col-span-1 md:col-span-2"><label className={labelStyle}>標題</label><input value={formData.title} onChange={e=>setFormData({...formData, title:e.target.value})} className={inputStyle} placeholder="例如：台積電概念園區"/></div><div className="col-span-1 md:col-span-2"><div className="flex gap-2"><div className="flex-1"><label className={labelStyle}>英文標題 (AI)</label><input value={formData.titleEN} onChange={e=>setFormData({...formData, titleEN:e.target.value})} className={inputStyle} placeholder="點擊翻譯按鈕自動生成..."/></div><button onClick={handleTranslate} disabled={translating} className="mt-6 bg-slate-800 text-white px-4 rounded-lg text-sm font-bold hover:bg-black transition flex items-center gap-2">{translating?"...":<><Languages size={14}/> 翻譯</>}</button></div></div><div className="col-span-1 md:col-span-2"><label className={labelStyle}>副標題</label><input value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle:e.target.value})} className={inputStyle} placeholder="例如：稀有釋出，機會難得"/></div>
+                  <div><label className={labelStyle}>縣市區域</label><select value={formData.city} onChange={e=>setFormData({...formData, city:e.target.value})} className={inputStyle}><option value="高雄">高雄</option><option value="屏東">屏東</option></select></div><div><label className={labelStyle}>物件屬性</label><select value={formData.propertyType} onChange={e=>setFormData({...formData, propertyType:e.target.value})} className={inputStyle}><option value="工業地">工業地</option><option value="農地">農地</option><option value="建地">建地</option></select></div><div><label className={labelStyle}>交易類別</label><select value={formData.usageType} onChange={e=>setFormData({...formData, usageType:e.target.value})} className={inputStyle}><option value="買賣">買賣</option><option value="租賃">租賃</option></select></div><div><label className={labelStyle}>價格</label><input value={formData.price} onChange={e=>setFormData({...formData, price:e.target.value})} className={inputStyle} placeholder="例如：1,880 萬"/></div><div className="col-span-1 md:col-span-2"><label className={labelStyle}>地址</label><input value={formData.address} onChange={e=>setFormData({...formData, address:e.target.value})} className={inputStyle} placeholder="例如：高雄市仁武區..."/></div><div className="col-span-1 md:col-span-2"><label className={labelStyle}><MapIcon size={12} className="inline mr-1"/> Google 地圖嵌入網址</label><input value={formData.googleMapUrl} onChange={e=>setFormData({...formData, googleMapUrl:e.target.value})} className={inputStyle} placeholder="貼上 iframe src 網址" /></div><div><label className={labelStyle}>經紀人電話</label><input value={formData.agentPhone} onChange={e=>setFormData({...formData, agentPhone:e.target.value})} className={inputStyle} placeholder="例如：0912-345-678"/></div><div><label className={labelStyle}>經紀人姓名</label><input value={formData.agentName} onChange={e=>setFormData({...formData, agentName:e.target.value})} className={inputStyle} placeholder="例如：王小明"/></div><div><label className={labelStyle}>LINE ID</label><input value={formData.lineId} onChange={e=>setFormData({...formData, lineId:e.target.value})} className={inputStyle} placeholder="例如：wang123"/></div><div><label className={labelStyle}>LINE QR 圖片</label><input type="file" onChange={e=>handleUpload(e, (url)=>setFormData({...formData, lineQr: url}))} className="text-xs"/></div><div className="col-span-1 md:col-span-2"><label className={labelStyle}>封面圖</label><input type="file" onChange={e=>handleUpload(e, (url)=>setFormData({...formData, thumb: url}))} className="text-xs"/></div></div></section>
+                  <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200"><div className="flex justify-between items-center mb-6"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">戶別銷控表 (Unit List)</h3><button onClick={()=>setUnits([...units, {id: Date.now(), number:'', ping:'', price:'', status:'available', layout:''}])} className="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-100 transition flex items-center gap-1"><Plus size={14}/> 新增戶別</button></div><div className="space-y-4"><div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 bg-slate-50 rounded-lg text-xs font-bold text-slate-500 uppercase"><div className="col-span-2">戶號</div><div className="col-span-2">坪數</div><div className="col-span-3">價格</div><div className="col-span-2">狀態</div><div className="col-span-2">平面圖</div><div className="col-span-1"></div></div>{units.map((u, i) => (<div key={i} className="flex flex-col md:grid md:grid-cols-12 gap-2 md:gap-4 items-start md:items-center p-4 border border-slate-100 rounded-lg hover:border-orange-200 transition bg-white shadow-sm md:shadow-none"><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">戶號</span><input value={u.number} onChange={e=>{const x=[...units];x[i].number=e.target.value;setUnits(x)}} className="w-full bg-slate-50 border-none rounded p-1.5 text-sm font-bold text-center" placeholder="A1"/></div><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">坪數</span><input value={u.ping} onChange={e=>{const x=[...units];x[i].ping=e.target.value;setUnits(x)}} className="w-full border-b border-slate-200 p-1 text-sm focus:outline-none focus:border-orange-500" placeholder="0"/></div><div className="w-full md:col-span-3 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">價格</span><input value={u.price} onChange={e=>{const x=[...units];x[i].price=e.target.value;setUnits(x)}} className="w-full border-b border-slate-200 p-1 text-sm focus:outline-none focus:border-orange-500" placeholder="價格"/></div><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">狀態</span><select value={u.status} onChange={e=>{const x=[...units];x[i].status=e.target.value;setUnits(x)}} className="w-full bg-white border border-slate-200 rounded p-1.5 text-xs"><option value="available">🟢 可銷售</option><option value="reserved">🟡 已預訂</option><option value="sold">🔴 已售出</option></select></div><div className="w-full md:col-span-2 flex items-center gap-2"><span className="md:hidden text-xs font-bold text-slate-400 w-10">圖檔</span><label className="cursor-pointer text-xs text-blue-500 hover:underline truncate block">{u.layout ? "✅ 已上傳" : "📤 上傳圖檔"}<input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>{const x=[...units];x[i].layout=url;setUnits(x)})}/></label></div><div className="w-full md:col-span-1 text-right mt-2 md:mt-0"><button onClick={()=>setUnits(units.filter((_,idx)=>idx!==i))} className="text-red-400 text-xs flex items-center justify-end gap-1 md:justify-center w-full"><Trash2 size={14}/> 刪除</button></div></div>))}</div></section>
                   <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200"><div className="flex justify-between mb-6"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">規格 & 特色</h3><div className="flex gap-2"><button onClick={()=>setSpecs([...specs, {id: Date.now(), label:'', value:''}])} className="text-xs bg-slate-100 px-3 py-1 rounded hover:bg-slate-200 font-bold">+ 增加規格</button><button onClick={()=>setFeatures([...features, {id: Date.now(), title:'', desc:''}])} className="text-xs bg-slate-100 px-3 py-1 rounded hover:bg-slate-200 font-bold">+ 增加特色</button></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div className="space-y-3"><h4 className="text-xs font-bold text-slate-400 uppercase mb-2">物件規格 (Specs)</h4>{specs.map((s,i)=>(<div key={i} className="flex gap-2"><input value={s.label} onChange={e=>{const x=[...specs];x[i].label=e.target.value;setSpecs(x)}} className="border rounded p-2 w-1/3 text-sm" placeholder="項目 (如: 面寬)"/><input value={s.value} onChange={e=>{const x=[...specs];x[i].value=e.target.value;setSpecs(x)}} className="border rounded p-2 w-full text-sm" placeholder="內容"/><button onClick={()=>setSpecs(specs.filter((_,idx)=>idx!==i))} className="text-slate-300 hover:text-red-500"><X size={16}/></button></div>))}</div><div className="space-y-3"><h4 className="text-xs font-bold text-slate-400 uppercase mb-2">核心特色 (Features)</h4>{features.map((f,i)=>(<div key={i} className="flex gap-2"><input value={f.title} onChange={e=>{const x=[...features];x[i].title=e.target.value;setFeatures(x)}} className="border rounded p-2 w-1/3 text-sm" placeholder="標題"/><input value={f.desc} onChange={e=>{const x=[...features];x[i].desc=e.target.value;setFeatures(x)}} className="border rounded p-2 w-full text-sm" placeholder="描述"/><button onClick={()=>setFeatures(features.filter((_,idx)=>idx!==i))} className="text-slate-300 hover:text-red-500"><X size={16}/></button></div>))}</div></div></section>
-                  <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3 mb-6">案場理念</h3><input value={concept.title} onChange={e=>setConcept({...concept, title:e.target.value})} className={inputStyle} placeholder="標題" /><textarea value={concept.content} onChange={e=>setConcept({...concept, content:e.target.value})} className={`${inputStyle} h-32 mt-4`} placeholder="內容..."/><div className="mt-4"><label className={labelStyle}>配圖</label><input type="file" onChange={e=>handleUpload(e, (url)=>setConcept({...concept, image: url}))} className="text-xs"/></div></section>
                   <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200"><div className="flex justify-between mb-4"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">周遭環境 (新聞)</h3><button onClick={()=>setEnvList([...envList, {id: Date.now(), title:"", desc:"", image:"", link:""}])} className="text-orange-500 text-xs font-bold">+ 新增</button></div>{envList.map((env, i) => (<div key={i} className="bg-slate-50 p-4 border border-slate-100 rounded-xl mb-3 space-y-2"><input value={env.title} onChange={e=>{const x=[...envList];x[i].title=e.target.value;setEnvList(x)}} className={inputStyle} placeholder="新聞標題"/><textarea value={env.desc} onChange={e=>{const x=[...envList];x[i].desc=e.target.value;setEnvList(x)}} className={inputStyle} placeholder="簡述"/><input value={env.link} onChange={e=>{const x=[...envList];x[i].link=e.target.value;setEnvList(x)}} className={inputStyle} placeholder="連結網址"/></div>))}</section>
                   <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200"><div className="flex justify-between mb-4"><h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">工程進度</h3><button onClick={()=>setProgressList([...progressList, {id: Date.now(), date:'', status:''}])} className="text-orange-500 text-xs font-bold">+ 新增</button></div>{progressList.map((p, i) => (<div key={i} className="flex gap-2 mb-2"><input type="date" value={p.date} onChange={e=>{const x=[...progressList];x[i].date=e.target.value;setProgressList(x)}} className="border rounded p-2 text-sm"/><input value={p.status} onChange={e=>{const x=[...progressList];x[i].status=e.target.value;setProgressList(x)}} className="border rounded p-2 w-full text-sm" placeholder="進度描述"/><button onClick={()=>setProgressList(progressList.filter((_,idx)=>idx!==i))}><Trash2 size={16} className="text-slate-300 hover:text-red-500"/></button></div>))}</section>
                 </div>
