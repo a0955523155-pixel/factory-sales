@@ -44,7 +44,7 @@ const Navbar = ({ phone }) => {
             </div>
           </Link>
 
-          {/* 電腦版選單 */}
+          {/* 電腦 & 平板版選單 (大螢幕顯示) */}
           <div className="hidden lg:flex items-center space-x-6 font-bold text-sm">
             {navLinks.map((link) => (
               <Link key={link.path} to={link.path} className="flex items-center gap-2 text-slate-600 hover:text-orange-600 transition tracking-wider">
@@ -52,14 +52,19 @@ const Navbar = ({ phone }) => {
               </Link>
             ))}
             
+            {/* 撥打電話 */}
             <a href={`tel:${settings.contactPhone}`} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2 rounded hover:bg-orange-600 transition duration-300 shadow-lg group ml-4">
               <Phone size={16} className="group-hover:animate-bounce"/>
               <span className="tracking-wider">{settings.contactPhone}</span>
             </a>
-            
-            {/* 電腦版也可以加個隱藏的小後台入口 (選填，目前先不加免得太雜) */}
+
+            {/* 後台入口 (全裝置顯示) */}
+            <Link to="/admin" className="text-slate-400 hover:text-slate-800 p-2" title="管理後台">
+               <Settings size={20}/>
+            </Link>
           </div>
 
+          {/* 手機版漢堡按鈕 (小螢幕顯示) */}
           <div className="lg:hidden">
             <button onClick={() => setIsOpen(!isOpen)} className="text-slate-800">
               {isOpen ? <X size={28} /> : <Menu size={28} />}
@@ -68,7 +73,7 @@ const Navbar = ({ phone }) => {
         </div>
       </div>
       
-      {/* 手機版選單 (包含後台入口) */}
+      {/* 手機版下拉選單 */}
       {isOpen && (
          <div className="lg:hidden bg-white border-t border-slate-100 absolute w-full left-0 shadow-xl p-4 flex flex-col gap-2 h-screen pb-32 overflow-y-auto">
             {navLinks.map((link) => (
@@ -78,9 +83,9 @@ const Navbar = ({ phone }) => {
             ))}
             <a href={`tel:${settings.contactPhone}`} className="block py-4 px-4 text-orange-600 font-bold mt-2 text-lg">撥打電話: {settings.contactPhone}</a>
             
-            {/* 手機版專用後台入口 */}
+            {/* 手機版後台入口 */}
             <Link to="/admin" className="flex items-center gap-3 py-4 px-4 text-slate-400 font-bold hover:bg-slate-50 rounded mt-4 border-t border-slate-100" onClick={() => setIsOpen(false)}>
-               <Settings size={18}/> 管理後台
+               <Settings size={18}/> 管理員登入
             </Link>
          </div>
       )}

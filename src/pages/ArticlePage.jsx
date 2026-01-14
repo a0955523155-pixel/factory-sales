@@ -23,8 +23,14 @@ const ArticlePage = ({ category, title }) => {
         const list = [];
         querySnapshot.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
         
-        // 排序：新 -> 舊
-        list.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // --- 排序邏輯修正：由新到舊 (Latest Created First) ---
+        list.sort((a, b) => {
+            // 優先使用 createdAt (毫秒時間戳)
+            const timeA = a.createdAt || new Date(a.date).getTime();
+            const timeB = b.createdAt || new Date(b.date).getTime();
+            return timeB - timeA; // 大的 (新的) 排前面
+        });
+
         setArticles(list);
       } catch (e) {
         console.error("Error:", e);
@@ -32,10 +38,10 @@ const ArticlePage = ({ category, title }) => {
       setLoading(false);
     };
     fetchArticles();
-    setCurrentPage(1); // 切換分類時重置頁碼
+    setCurrentPage(1);
   }, [category]);
 
-  // 計算分頁數據
+  // 計算分頁
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentArticles = articles.slice(indexOfFirstItem, indexOfLastItem);
@@ -70,12 +76,12 @@ const ArticlePage = ({ category, title }) => {
             <>
                <div className="space-y-8">
                   {currentArticles.map((item, index) => {
-                     // 計算全域索引 (判斷是否為前三篇)
+                     // 混合排版：前 3 篇顯示大圖，後面顯示列表
                      const globalIndex = indexOfFirstItem + index;
                      const isTopThree = globalIndex < 3;
 
                      if (isTopThree) {
-                        // --- 前三篇：圖文大卡片 ---
+                        // --- 卡片式排版 ---
                         return (
                            <Link to="#" key={item.id} className="block group">
                              <div className="bg-white rounded-3xl overflow-hidden shadow-lg border border-slate-100 flex flex-col md:flex-row hover:-translate-y-1 transition duration-300">
@@ -98,7 +104,7 @@ const ArticlePage = ({ category, title }) => {
                            </Link>
                         );
                      } else {
-                        // --- 第四篇以後：純文字列表 ---
+                        // --- 列表式排版 ---
                         return (
                            <div key={item.id} className="bg-white p-6 rounded-xl border border-slate-200 hover:border-orange-300 transition flex flex-col md:flex-row md:items-center justify-between group cursor-pointer">
                               <div className="flex-1 pr-4">
@@ -118,7 +124,7 @@ const ArticlePage = ({ category, title }) => {
                   })}
                </div>
 
-               {/* 分頁控制區 */}
+               {/* 分頁按鈕 */}
                {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-4 mt-16">
                      <button 
