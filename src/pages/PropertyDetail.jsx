@@ -2,82 +2,36 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
-<<<<<<< HEAD
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, ArrowLeft, Calendar, Phone, QrCode, 
   Activity, Zap, Grid, CheckCircle2, Send, Map, X
-=======
-import { motion } from 'framer-motion';
-import { 
-  MapPin, ArrowLeft, Calendar, Phone, QrCode, Smartphone,
-  Activity, Zap, Grid, CheckCircle2, Send, Map
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-<<<<<<< HEAD
-// --- 1. 建築理念 (修復版：工業風預設圖) ---
+// --- 1. 建築理念 (已更換為工業風預設圖) ---
 const Concept = ({ data }) => {
-  // 使用這張 Unsplash 工業風圖片作為預設
-  const defaultImage = "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80";
-  const bgImage = (data.image && data.image.length > 10) ? data.image : defaultImage;
-
+  // 這裡換成了一張更具工業感的清水模建築照片
+  const defaultImage = "https://images.unsplash.com/photo-1565008447742-97f6f38c9853?auto=format&fit=crop&q=80";
+  const bgImage = (data.image && data.image !== "") ? data.image : defaultImage;
+  
   return (
     <section className="py-24 px-6 max-w-7xl mx-auto">
       <div className="relative flex flex-col lg:flex-row gap-12 items-center">
-         {/* 圖片區塊：確保高度與寬度 */}
-         <div className="w-full lg:w-1/2 aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl relative group bg-white">
+         <div className="w-full lg:w-1/2 rounded-3xl overflow-hidden shadow-2xl relative group bg-white p-12 flex items-center justify-center">
+            {/* 如果有上傳圖片就用上傳的，沒有就用上面的預設工業圖 */}
             <img 
-              src={bgImage} 
-              className="w-full h-full object-cover transition duration-700 group-hover:scale-105" 
-              alt="Concept"
-              onError={(e) => e.target.src = defaultImage} // 載入失敗時回退預設圖
+                src={bgImage} 
+                className="w-full h-auto max-h-[500px] object-cover drop-shadow-xl rounded-lg" 
+                alt="Architectural Concept" 
+                onError={(e) => e.target.src = defaultImage}
             />
-            {/* 橘色裝飾框 */}
-            <div className="absolute top-4 left-4 right-4 bottom-4 border border-white/30 rounded-2xl pointer-events-none"></div>
          </div>
          
          <motion.div initial={{ x: 50, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} className="w-full lg:w-1/2">
            <span className="text-orange-600 font-mono font-bold tracking-widest uppercase mb-4 block">Design Concept</span>
            <h2 className="text-4xl md:text-5xl font-black mb-8 text-slate-800 leading-tight">{data.title || "設計理念"}</h2>
-=======
-// --- 1. 建築理念 (修正圖片顯示問題) ---
-const Concept = ({ data }) => {
-  // 如果後台沒傳圖片，使用這張穩定的工業風預設圖
-  const defaultImage = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80";
-  const bgImage = (data.image && data.image !== "") ? data.image : defaultImage;
-  
-  return (
-    <section className="py-24 px-6 max-w-7xl mx-auto">
-      <div className="relative flex flex-col lg:flex-row gap-16 items-center">
-         
-         {/* 左側圖片區：修正為滿版顯示，並強制最小高度 */}
-         <div className="w-full lg:w-1/2 relative min-h-[400px]">
-            <div className="absolute inset-0 rounded-3xl overflow-hidden shadow-2xl border border-slate-200">
-                <img 
-                  src={bgImage} 
-                  className="w-full h-full object-cover hover:scale-105 transition duration-700" 
-                  alt="Concept"
-                  onError={(e) => { e.target.src = defaultImage; }} // 如果圖片載入失敗，強制切回預設圖
-                />
-            </div>
-            {/* 裝飾性背框 */}
-            <div className="absolute -inset-4 border-2 border-orange-500/20 rounded-3xl -z-10 transform rotate-3"></div>
-         </div>
-         
-         {/* 右側文字區 */}
-         <motion.div 
-           initial={{ x: 50, opacity: 0 }} 
-           whileInView={{ x: 0, opacity: 1 }} 
-           className="w-full lg:w-1/2"
-         >
-           <span className="text-orange-600 font-mono font-bold tracking-widest uppercase mb-4 block">Design Concept</span>
-           <h2 className="text-4xl md:text-5xl font-black mb-8 text-slate-800 leading-tight">
-             {data.title || "設計理念"}
-           </h2>
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
            <div className="text-lg leading-relaxed text-slate-600 whitespace-pre-line font-medium border-l-4 border-orange-500 pl-6">
              {data.content}
            </div>
@@ -124,7 +78,6 @@ const Progress = ({ history }) => {
   );
 };
 
-<<<<<<< HEAD
 const UnitList = ({ units }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
   if (!units || units.length === 0) return null;
@@ -140,64 +93,14 @@ const UnitList = ({ units }) => {
 const LocationMap = ({ mapUrl, address }) => {
   if (!mapUrl) return null;
   return ( <section className="py-20 px-6 max-w-7xl mx-auto"><div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden"><div className="bg-slate-900 px-8 py-4 flex items-center justify-between"><h3 className="text-white font-bold flex items-center gap-2"><Map className="text-orange-500"/> 物件位置</h3><span className="text-slate-400 text-sm font-mono">{address}</span></div><div className="aspect-video w-full"><iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe></div></div></section> );
-=======
-const LocationMap = ({ mapUrl, address }) => {
-  if (!mapUrl) return null;
-  return (
-    <section className="py-20 px-6 max-w-7xl mx-auto">
-       <div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-          <div className="bg-slate-900 px-8 py-4 flex items-center justify-between">
-             <h3 className="text-white font-bold flex items-center gap-2"><Map className="text-orange-500"/> 物件位置</h3>
-             <span className="text-slate-400 text-sm font-mono">{address}</span>
-          </div>
-          <div className="aspect-video w-full">
-             <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
-          </div>
-       </div>
-    </section>
-  );
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
 };
 
 const ContactSection = ({ agentName, agentPhone, lineId, lineQr }) => {
   const [form, setForm] = useState({ name: '', industry: '', needs: '', ping: '', phone: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-<<<<<<< HEAD
   const handleSubmit = async (e) => { e.preventDefault(); setIsSubmitting(true); try { await addDoc(collection(db, "customers"), { ...form, createdAt: new Date() }); alert(`感謝 ${form.name}！您的需求已送出。`); setForm({ name: '', industry: '', needs: '', ping: '', phone: '' }); } catch (error) { alert("傳送失敗"); } setIsSubmitting(false); };
   return ( <div className="py-24 bg-slate-900 text-white relative overflow-hidden mt-12"><div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div><div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16"><div><span className="text-orange-500 font-mono font-bold uppercase tracking-widest mb-2 block">Contact Us</span><h2 className="text-5xl font-black mb-8">預約賞屋與諮詢</h2><div className="space-y-6"><a href={`tel:${agentPhone}`} className="flex items-center gap-6 p-6 bg-white/5 rounded-2xl border border-white/10 hover:bg-orange-600 hover:border-orange-500 transition duration-300 group"><div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white group-hover:text-orange-600 transition"><Phone size={28} /></div><div><p className="text-xs text-slate-400 uppercase tracking-widest group-hover:text-white">Call Agent</p><p className="text-2xl font-black">{agentPhone} <span className="text-base font-normal opacity-70">({agentName})</span></p></div></a><div className="flex items-center gap-6 p-6 bg-white/5 rounded-2xl border border-white/10">{lineQr ? <img src={lineQr} className="w-24 h-24 rounded-lg bg-white object-contain" /> : <div className="w-24 h-24 rounded-lg bg-green-600/20 flex items-center justify-center text-green-500"><QrCode size={32} /></div>}<div className="flex-1"><p className="text-xs text-slate-400 uppercase tracking-widest">Add LINE Friend</p><p className="text-2xl font-black">{lineId || "無 ID"}</p>{lineId && <a href={`https://line.me/ti/p/~${lineId}`} target="_blank" className="text-sm text-green-400 hover:underline mt-1 block">點擊加好友</a>}</div></div></div></div><div className="bg-white text-slate-900 p-8 md:p-10 rounded-3xl shadow-2xl"><h3 className="text-2xl font-black mb-6 flex items-center gap-2"><Send className="text-orange-600"/> 線上需求單</h3><form onSubmit={handleSubmit} className="space-y-4"><div className="grid grid-cols-2 gap-4"><input required name="name" value={form.name} onChange={handleChange} placeholder="您的姓名 *" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" /><input name="phone" value={form.phone} onChange={handleChange} placeholder="聯絡電話 *" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" /></div><input name="industry" value={form.industry} onChange={handleChange} placeholder="所屬行業" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" /><div className="grid grid-cols-2 gap-4"><input name="ping" value={form.ping} onChange={handleChange} placeholder="需求坪數" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" /><select name="needs" value={form.needs} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500 text-slate-500"><option value="">需求類型</option><option value="購地自建">購地自建</option><option value="購買廠房">購買廠房</option><option value="租賃">租賃</option><option value="投資">投資</option></select></div><button type="submit" disabled={isSubmitting} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-orange-600 transition shadow-lg mt-2">{isSubmitting ? "傳送中..." : "送出諮詢"}</button></form></div></div></div> ); };
-=======
-  const handleSubmit = async (e) => {
-    e.preventDefault(); setIsSubmitting(true);
-    try { await addDoc(collection(db, "customers"), { ...form, createdAt: new Date() }); alert(`感謝 ${form.name}！您的需求已送出。`); setForm({ name: '', industry: '', needs: '', ping: '', phone: '' }); } 
-    catch (error) { alert("傳送失敗"); } setIsSubmitting(false);
-  };
-  return (
-    <div className="py-24 bg-slate-900 text-white relative overflow-hidden mt-12">
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
-      <div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <div>
-            <span className="text-orange-500 font-mono font-bold uppercase tracking-widest mb-2 block">Contact Us</span>
-            <h2 className="text-5xl font-black mb-8">預約賞屋與諮詢</h2>
-            <div className="space-y-6">
-               <a href={`tel:${agentPhone}`} className="flex items-center gap-6 p-6 bg-white/5 rounded-2xl border border-white/10 hover:bg-orange-600 hover:border-orange-500 transition duration-300 group"><div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white group-hover:text-orange-600 transition"><Phone size={28} /></div><div><p className="text-xs text-slate-400 uppercase tracking-widest group-hover:text-white">Call Agent</p><p className="text-2xl font-black">{agentPhone} <span className="text-base font-normal opacity-70">({agentName})</span></p></div></a>
-               <div className="flex items-center gap-6 p-6 bg-white/5 rounded-2xl border border-white/10">{lineQr ? <img src={lineQr} className="w-24 h-24 rounded-lg bg-white object-contain" /> : <div className="w-24 h-24 rounded-lg bg-green-600/20 flex items-center justify-center text-green-500"><QrCode size={32} /></div>}<div className="flex-1"><p className="text-xs text-slate-400 uppercase tracking-widest">Add LINE Friend</p><p className="text-2xl font-black">{lineId || "無 ID"}</p>{lineId && <a href={`https://line.me/ti/p/~${lineId}`} target="_blank" className="text-sm text-green-400 hover:underline mt-1 block">點擊加好友</a>}</div></div>
-            </div>
-          </div>
-          <div className="bg-white text-slate-900 p-8 md:p-10 rounded-3xl shadow-2xl">
-             <h3 className="text-2xl font-black mb-6 flex items-center gap-2"><Send className="text-orange-600"/> 線上需求單</h3>
-             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4"><input required name="name" value={form.name} onChange={handleChange} placeholder="您的姓名 *" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" /><input name="phone" value={form.phone} onChange={handleChange} placeholder="聯絡電話 *" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" /></div>
-                <input name="industry" value={form.industry} onChange={handleChange} placeholder="所屬行業" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" />
-                <div className="grid grid-cols-2 gap-4"><input name="ping" value={form.ping} onChange={handleChange} placeholder="需求坪數" className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500" /><select name="needs" value={form.needs} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl focus:outline-none focus:border-orange-500 text-slate-500"><option value="">需求類型</option><option value="購地自建">購地自建</option><option value="購買廠房">購買廠房</option><option value="租賃">租賃</option><option value="投資">投資</option></select></div>
-                <button type="submit" disabled={isSubmitting} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-orange-600 transition shadow-lg mt-2">{isSubmitting ? "傳送中..." : "送出諮詢"}</button>
-             </form>
-          </div>
-      </div>
-    </div>
-  );
-};
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -225,13 +128,10 @@ const PropertyDetail = () => {
       </div>
       <Concept data={data.concept || {}} />
       <SpecsAndFeatures specs={data.specs || []} features={data.features || []} />
-<<<<<<< HEAD
       
       {/* 新增：戶別銷控表 */}
       <UnitList units={data.units || []} />
 
-=======
->>>>>>> c83bb8c877d8f8bcf5538793994123c7ad28a290
       <Progress history={data.progressHistory || []} />
       <LocationMap mapUrl={data.basicInfo.googleMapUrl} address={data.basicInfo.address} />
       {data.environmentList && data.environmentList.length > 0 && (
