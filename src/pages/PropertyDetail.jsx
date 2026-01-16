@@ -3,16 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  MapPin, ArrowLeft, Calendar, Phone, QrCode, 
-  Activity, Zap, Grid, CheckCircle2, Send, Map as MapIcon, X, // 修改這裡：Map 改為 MapIcon
-  Facebook, Instagram, MessageCircle
-} from 'lucide-react';
+import { MapPin, ArrowLeft, Calendar, Phone, Activity, CheckCircle2, Map as MapIcon, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection'; 
 
-// --- 規格與特色 ---
+// 深色卡片風格 (保持不變)
 const SpecsAndFeatures = ({ specs, features, title, description }) => (
   <section className="py-20 px-6 max-w-7xl mx-auto">
     <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden">
@@ -35,35 +31,110 @@ const SpecsAndFeatures = ({ specs, features, title, description }) => (
   </section>
 );
 
-const UnitList = ({ units }) => {
+// --- 互動平面圖 (還原版：無邊框 / 狀態文字 / 不變形) ---
+const InteractiveMap = ({ mapUrl, units }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
-  if (!units || units.length === 0) return null;
+  
+  if (!mapUrl) return null;
+
+  const pointsToString = (points) => points.map(p => `${p.x},${p.y}`).join(" ");
+  
+  // 計算中心點 (用來放文字)
+  const getPolygonCenter = (points) => {
+    if (!points || points.length === 0) return { x: 50, y: 50 };
+    const x = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+    const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+    return { x, y };
+  };
+
+  // 狀態文字對照表
+  const statusTextMap = { available: '可銷售', reserved: '已預訂', sold: '已售出' };
+
   return (
-    <section className="py-20 px-6 max-w-7xl mx-auto bg-slate-50 border-y border-slate-200">
-       <div className="text-center mb-10"><h2 className="text-3xl font-black text-slate-900">戶別銷控表</h2><p className="text-slate-500 mt-2">點擊戶別可查看詳細資料</p></div>
-       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">{units.map((u, i) => (<button key={i} onClick={() => setSelectedUnit(u)} className={`p-4 rounded-xl border-2 font-bold text-lg transition shadow-sm hover:shadow-md flex flex-col items-center justify-center h-24 relative ${u.status === 'sold' ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : u.status === 'reserved' ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : 'bg-white border-orange-500 text-orange-600 hover:bg-orange-50'}`}>{u.number}<span className="text-xs font-normal mt-1 opacity-80">{u.status === 'sold' ? '已售出' : u.status === 'reserved' ? '已預訂' : '可銷售'}</span></button>))}</div>
-       <AnimatePresence>{selectedUnit && (<div className="fixed inset-0 z-[60] flex items-center justify-center px-4"><motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedUnit(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm"></motion.div><motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-3xl p-8 max-w-lg w-full relative z-10 shadow-2xl"><button onClick={() => setSelectedUnit(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button><h3 className="text-3xl font-black text-slate-900 mb-1">{selectedUnit.number} <span className="text-base font-normal bg-orange-100 text-orange-600 px-2 py-1 rounded ml-2 align-middle">{selectedUnit.status}</span></h3><div className="border-t border-slate-100 my-4 pt-4 space-y-4"><div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">坪數</span><span className="font-bold text-lg">{selectedUnit.ping} 坪</span></div><div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">價格</span><span className="font-bold text-lg text-orange-600">{selectedUnit.price}</span></div></div>{selectedUnit.layout ? (<div className="mt-6"><p className="text-sm text-slate-400 mb-2 font-bold">平面配置圖</p><img src={selectedUnit.layout} className="w-full rounded-lg border border-slate-200" /></div>) : <div className="mt-6 text-center text-slate-400 py-8 bg-slate-50 rounded-xl">暫無平面圖</div>}<button onClick={() => setSelectedUnit(null)} className="w-full mt-8 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition">關閉</button></motion.div></div>)}</AnimatePresence>
+    <section className="py-20 px-6 max-w-7xl mx-auto">
+       <div className="text-center mb-10"><h2 className="text-3xl font-black text-slate-900">基地配置平面圖</h2><p className="text-slate-500 mt-2">點擊圖上區塊查看詳細資訊</p></div>
+       
+       <div className="relative rounded-xl overflow-hidden shadow-2xl border border-slate-200 bg-slate-100 select-none w-full group/map">
+          {/* 1. 底圖：自然撐開容器，不強制變形 */}
+          <img src={mapUrl} className="w-full h-auto block" alt="Site Plan" />
+          
+          {/* 2. SVG 互動層：絕對定位覆蓋 */}
+          <svg 
+             className="absolute inset-0 w-full h-full"
+             viewBox="0 0 100 100" 
+             preserveAspectRatio="none" 
+          >
+             {units.map((u, i) => u.mapPoints && (
+                <g 
+                   key={i} 
+                   onClick={() => setSelectedUnit(u)}
+                   className="cursor-pointer transition-opacity duration-300 hover:opacity-80 group/poly"
+                >
+                   {/* 多邊形區域 */}
+                   <polygon 
+                      points={pointsToString(u.mapPoints)}
+                      fill={u.status === 'sold' ? '#64748b' : u.status === 'reserved' ? '#eab308' : (u.mapColor || '#ea580c')}
+                      fillOpacity={u.status === 'sold' ? "0.7" : "0.5"}
+                      stroke="none" // 移除邊框
+                   />
+                   
+                   {/* 狀態文字 */}
+                   <text 
+                      x={getPolygonCenter(u.mapPoints).x} 
+                      y={getPolygonCenter(u.mapPoints).y}
+                      fontSize={u.mapFontSize/5 || 2.5} 
+                      fill={u.mapTextColor || 'white'} 
+                      textAnchor={u.mapTextAlign || "middle"}
+                      alignmentBaseline="middle"
+                      fontFamily={u.mapFont}
+                      className="pointer-events-none drop-shadow-md"
+                      style={{ textShadow: '0 0.5px 2px rgba(0,0,0,0.8)' }}
+                   >
+                      {statusTextMap[u.status]}
+                   </text>
+                </g>
+             ))}
+          </svg>
+       </div>
+
+       {/* Modal 彈窗 (還原樣式) */}
+       <AnimatePresence>
+         {selectedUnit && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedUnit(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm"></motion.div>
+               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-3xl p-8 max-w-lg w-full relative z-10 shadow-2xl">
+                  <button onClick={() => setSelectedUnit(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button>
+                  <div className="flex items-center gap-3 mb-4">
+                     <span className={`px-3 py-1 rounded text-xs font-bold ${selectedUnit.status==='sold'?'bg-slate-200 text-slate-500':selectedUnit.status==='reserved'?'bg-yellow-100 text-yellow-700':'bg-orange-100 text-orange-600'}`}>
+                        {selectedUnit.status === 'sold' ? '已售出' : selectedUnit.status === 'reserved' ? '已預訂' : '銷售中'}
+                     </span>
+                     <h3 className="text-3xl font-black text-slate-900">{selectedUnit.number}</h3>
+                  </div>
+                  <div className="space-y-4 border-t border-slate-100 pt-4">
+                     <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">坪數</span><span className="font-bold text-lg">{selectedUnit.ping} 坪</span></div>
+                     <div className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-500">價格</span><span className="font-bold text-lg text-orange-600">{selectedUnit.price}</span></div>
+                  </div>
+                  {selectedUnit.layout && <div className="mt-6"><img src={selectedUnit.layout} className="w-full rounded-lg border"/></div>}
+                  <button onClick={() => setSelectedUnit(null)} className="w-full mt-8 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-orange-600 transition">關閉</button>
+               </motion.div>
+            </div>
+         )}
+       </AnimatePresence>
     </section>
   );
 };
 
-const LocationMap = ({ mapUrl, address }) => {
-  if (!mapUrl) return null;
+const UnitList = ({ units }) => {
+  if (!units || units.length === 0) return null;
   return (
-    <section className="py-20 px-6 max-w-7xl mx-auto">
-       <div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-          <div className="bg-slate-900 px-8 py-4 flex items-center justify-between">
-             {/* 修改這裡：使用 MapIcon */}
-             <h3 className="text-white font-bold flex items-center gap-2"><MapIcon className="text-orange-500"/> 物件位置</h3>
-             <span className="text-slate-400 text-sm font-mono">{address}</span>
-          </div>
-          <div className="aspect-video w-full">
-             <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
-          </div>
-       </div>
+    <section className="py-20 px-6 max-w-7xl mx-auto bg-slate-50 border-y border-slate-200">
+       <div className="text-center mb-10"><h2 className="text-3xl font-black text-slate-900">戶別銷控列表</h2></div>
+       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">{units.map((u, i) => (<div key={i} className={`p-4 rounded-xl border-2 font-bold text-lg flex flex-col items-center justify-center h-24 relative transition hover:-translate-y-1 ${u.status === 'sold' ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-white border-orange-500 text-orange-600 shadow-sm'}`}>{u.number}<span className="text-xs font-normal mt-1 opacity-80">{u.status === 'sold' ? '已售出' : u.status === 'reserved' ? '已預訂' : '可銷售'}</span></div>))}</div>
     </section>
   );
 };
+
+const LocationMap = ({ mapUrl, address }) => { if (!mapUrl) return null; return ( <section className="py-20 px-6 max-w-7xl mx-auto"><div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden"><div className="bg-slate-900 px-8 py-4 flex items-center justify-between"><h3 className="text-white font-bold flex items-center gap-2"><MapIcon className="text-orange-500"/> 物件位置</h3><span className="text-slate-400 text-sm font-mono">{address}</span></div><div className="aspect-video w-full"><iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe></div></div></section> ); };
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -89,6 +160,10 @@ const PropertyDetail = () => {
         </div>
       </div>
       <SpecsAndFeatures specs={data.specs || []} features={data.features || []} title={data.basicInfo.title} description={data.basicInfo.description} />
+      
+      {/* 新增：互動地圖 (如果有上傳底圖才顯示) */}
+      {data.basicInfo.interactiveMap && <InteractiveMap mapUrl={data.basicInfo.interactiveMap} units={data.units || []} />}
+      
       <UnitList units={data.units || []} />
       <LocationMap mapUrl={data.basicInfo.googleMapUrl} address={data.basicInfo.address} />
       <ContactSection title="預約賞屋與諮詢" dark={true} />
