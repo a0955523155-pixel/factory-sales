@@ -5,28 +5,15 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    // 1. 調整區塊大小警告限制 (單位: kB)，這裡設為 1000kB (1MB) 或 1500kB
-    chunkSizeWarningLimit: 1500,
+    // 1. 提高警告限制到 1600kb (1.6MB)，這樣就不會一直跳警告，但檔案也不會過大
+    chunkSizeWarningLimit: 1600,
 
-    // 2. 優化打包設定 (Rollup Options)
+    // 2. 簡化打包設定 (最穩定的分包方式)
     rollupOptions: {
       output: {
-        // 手動分包：將第三方套件拆開，避免單一檔案過大
         manualChunks(id) {
+          // 只將 node_modules (第三方套件) 獨立拆出來，這是最安全的做法
           if (id.includes('node_modules')) {
-            // 將 React 相關套件拆分
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'vendor-react';
-            }
-            // 將 Firebase 拆分 (因为它通常很大)
-            if (id.includes('firebase')) {
-              return 'vendor-firebase';
-            }
-            // 將 UI 動畫庫拆分
-            if (id.includes('framer-motion')) {
-              return 'vendor-framer';
-            }
-            // 其他所有 node_modules 內的套件打包成 vendor
             return 'vendor';
           }
         },
