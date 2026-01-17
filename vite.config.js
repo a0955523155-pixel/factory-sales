@@ -5,14 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    // 1. 提高警告限制到 1600kb (1.6MB)，這樣就不會一直跳警告，但檔案也不會過大
+    // 提高警告上限，避免 build 時一直跳黃色警告
     chunkSizeWarningLimit: 1600,
+    
+    // 確保打包後的路徑是相對路徑 (避免部署到子目錄時找不到檔案)
+    base: './', 
 
-    // 2. 簡化打包設定 (最穩定的分包方式)
     rollupOptions: {
       output: {
+        // 簡單的分包設定，將第三方套件獨立打包
         manualChunks(id) {
-          // 只將 node_modules (第三方套件) 獨立拆出來，這是最安全的做法
           if (id.includes('node_modules')) {
             return 'vendor';
           }
