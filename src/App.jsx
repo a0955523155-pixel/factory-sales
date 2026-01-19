@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // 引入 Navigate
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Lazy Load 區塊 (保持您原本的設定)
 const Home = lazy(() => import('./pages/Home'));
 const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
 const Admin = lazy(() => import('./pages/Admin'));
@@ -23,12 +22,16 @@ function App() {
           <Route path="/property/:id" element={<PropertyDetail />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/news" element={<ArticlePage categoryGroup="news" title="最新消息" />} />
+          
+          {/* 新聞動態 - 獨立頁面 */}
+          <Route path="/news/local" element={<ArticlePage category="news_local" title="本地新聞" />} />
+          <Route path="/news/project" element={<ArticlePage category="news_project" title="新案消息" />} />
+          
+          {/* 其他頁面 */}
           <Route path="/works" element={<ArticlePage categoryGroup="works" title="經典作品" />} />
           <Route path="/about" element={<ArticlePage categoryGroup="about" title="關於我們" />} />
-          <Route path="/academy" element={<ArticlePage categoryGroup="academy" title="房地產小學堂" />} />
-
-          {/* 🔥 新增這行：捕捉所有未知的路徑，強制導回首頁 (或是您可以導向 /admin) */}
+          
+          {/* 萬用路由 (404 導回首頁) */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
