@@ -1,10 +1,12 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
+// 頁面元件載入
 const Home = lazy(() => import('./pages/Home'));
 const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
 const Admin = lazy(() => import('./pages/Admin'));
 const ArticlePage = lazy(() => import('./pages/ArticlePage'));
+const ArticleDetail = lazy(() => import('./pages/ArticleDetail')); // 記得引入這個！
 const Contact = lazy(() => import('./pages/Contact'));
 
 const LoadingScreen = () => (
@@ -20,18 +22,21 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/property/:id" element={<PropertyDetail />} />
+          
+          {/* [關鍵修正] 文章詳情頁路由 */}
+          <Route path="/article/:id" element={<ArticleDetail />} />
+          
           <Route path="/admin" element={<Admin />} />
           <Route path="/contact" element={<Contact />} />
           
-          {/* 新聞動態 - 獨立頁面 */}
           <Route path="/news/local" element={<ArticlePage category="news_local" title="本地新聞" />} />
           <Route path="/news/project" element={<ArticlePage category="news_project" title="新案消息" />} />
+          <Route path="/academy" element={<ArticlePage category="academy" title="房地產小學堂" />} />
           
-          {/* 其他頁面 */}
           <Route path="/works" element={<ArticlePage categoryGroup="works" title="經典作品" />} />
           <Route path="/about" element={<ArticlePage categoryGroup="about" title="關於我們" />} />
           
-          {/* 萬用路由 (404 導回首頁) */}
+          {/* 萬用路由 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

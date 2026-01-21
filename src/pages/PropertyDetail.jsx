@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowLeft, Calendar, Phone, Activity, CheckCircle2, X, Star, Info, Filter, ArrowUpDown, Flame } from 'lucide-react';
+import { MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, Flame, Newspaper, ExternalLink } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection'; 
 
-// --- 規格與特色 (保持不變) ---
+// --- 規格與特色 ---
 const SpecsAndFeatures = ({ specs, features, title, description }) => (
   <section className="py-20 px-6 max-w-7xl mx-auto">
     <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden">
@@ -31,56 +31,75 @@ const SpecsAndFeatures = ({ specs, features, title, description }) => (
   </section>
 );
 
-// --- 智慧型戶別列表 (預設熱銷 / 篩選後完整) ---
+// --- 新增：周遭環境與新聞區塊 ---
+const SurroundingsSection = ({ list }) => {
+  if (!list || list.length === 0 || (list.length === 1 && !list[0].title)) return null;
+
+  return (
+    <section className="py-16 px-6 max-w-7xl mx-auto bg-white">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl font-black text-slate-900 flex items-center justify-center gap-2">
+          <Newspaper className="text-orange-500"/> 周遭環境與建設利多
+        </h2>
+        <p className="text-slate-500 mt-2">掌握區域發展脈動，預見未來增值潛力</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {list.map((item, index) => (
+          item.title && (
+            <div key={index} className="bg-slate-50 border border-slate-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition group relative overflow-hidden flex flex-col">
+               <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
+               <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-orange-600 transition">{item.title}</h3>
+               <p className="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-4 flex-1">{item.desc}</p>
+               {item.link && (
+                 <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline mt-auto">
+                   閱讀相關報導 <ExternalLink size={14}/>
+                 </a>
+               )}
+            </div>
+          )
+        ))}
+      </div>
+    </section>
+  );
+};
+
+// --- 智慧型戶別列表 ---
 const UnitList = ({ units }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
-  
-  // 篩選狀態
   const [filterZone, setFilterZone] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [sortType, setSortType] = useState('default');
 
   if (!units || units.length === 0) return null;
 
-  // 自動提取所有區域
-  const zones = useMemo(() => {
+  // 1. 自動提取所有區域
+  const zones = React.useMemo(() => {
     const uniqueZones = new Set(units.map(u => u.number.charAt(0).toUpperCase()));
     return ['All', ...Array.from(uniqueZones).sort()];
   }, [units]);
 
-  // 判斷是否為「預設狀態」 (未篩選)
   const isDefaultView = filterZone === 'All' && filterStatus === 'All';
 
-  // 處理列表邏輯
-  const displayUnits = useMemo(() => {
+  // 2. 處理列表邏輯
+  const displayUnits = React.useMemo(() => {
     const parseNum = (str) => parseFloat(str?.replace(/[^0-9.]/g, '') || 0);
     let result = [...units];
 
     if (isDefaultView) {
-      // --- 模式 1: 預設顯示 (Top 3 低總價熱銷) ---
-      // 只取可銷售，依價格排序，取前三
       return result
         .filter(u => u.status === 'available')
         .sort((a, b) => parseNum(a.price) - parseNum(b.price))
         .slice(0, 3)
-        .map(u => ({ ...u, isHot: true })); // 標記為熱銷
+        .map(u => ({ ...u, isHot: true }));
     } else {
-      // --- 模式 2: 篩選模式 (完整列表) ---
-      
-      // 1. 篩選
       if (filterZone !== 'All') result = result.filter(u => u.number.toUpperCase().startsWith(filterZone));
       if (filterStatus !== 'All') result = result.filter(u => u.status === filterStatus);
-
-      // 2. 排序
       switch (sortType) {
         case 'price-asc': result.sort((a, b) => parseNum(a.price) - parseNum(b.price)); break;
         case 'price-desc': result.sort((a, b) => parseNum(b.price) - parseNum(a.price)); break;
         case 'ping-asc': result.sort((a, b) => parseNum(a.ping) - parseNum(b.ping)); break;
         case 'ping-desc': result.sort((a, b) => parseNum(b.ping) - parseNum(a.ping)); break;
-        default: 
-          // 預設依戶號自然排序 (B1-1, B1-2, ... B1-10)
-          result.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' }));
-          break;
+        default: result.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' })); break;
       }
       return result;
     }
@@ -92,23 +111,16 @@ const UnitList = ({ units }) => {
     <section className="py-20 px-6 max-w-7xl mx-auto bg-slate-50 border-y border-slate-200">
        <div className="text-center mb-10">
           <h2 className="text-3xl font-black text-slate-900">戶別銷控列表</h2>
-          <p className="text-slate-500 mt-2">
-             {isDefaultView ? "精選低總價熱銷戶別 (請使用下方篩選器查看完整列表)" : `已篩選顯示 ${displayUnits.length} 筆資料`}
-          </p>
+          <p className="text-slate-500 mt-2">{isDefaultView ? "精選低總價熱銷戶別 (請使用下方篩選器查看完整列表)" : `已篩選顯示 ${displayUnits.length} 筆資料`}</p>
        </div>
 
-       {/* --- 篩選工具列 --- */}
        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-wrap gap-4 items-center justify-between">
           <div className="flex flex-wrap gap-3 items-center">
              <div className="flex items-center gap-2 text-slate-500 font-bold text-sm"><Filter size={16}/> 區域/狀態：</div>
-             
-             {/* 區域選擇 */}
              <select value={filterZone} onChange={(e)=>setFilterZone(e.target.value)} className="bg-slate-100 border-none rounded-lg px-4 py-2 text-sm font-bold text-slate-700 outline-none hover:bg-slate-200 cursor-pointer">
                 <option value="All">所有區域</option>
                 {zones.filter(z=>z!=='All').map(z => <option key={z} value={z}>{z} 區</option>)}
              </select>
-
-             {/* 狀態選擇 */}
              <select value={filterStatus} onChange={(e)=>setFilterStatus(e.target.value)} className="bg-slate-100 border-none rounded-lg px-4 py-2 text-sm font-bold text-slate-700 outline-none hover:bg-slate-200 cursor-pointer">
                 <option value="All">所有狀態</option>
                 <option value="available">🟢 銷售中</option>
@@ -116,11 +128,10 @@ const UnitList = ({ units }) => {
                 <option value="sold">🔴 已售出</option>
              </select>
           </div>
-
           <div className="flex flex-wrap gap-3 items-center">
-             <div className="flex items-center gap-2 text-slate-500 font-bold text-sm"><ArrowUpDown size={16}/> 排序：</div>
+             <div className="flex items-center gap-2 text-slate-500 font-bold text-sm">排序：</div>
              <select value={sortType} onChange={(e)=>setSortType(e.target.value)} className="bg-slate-100 border-none rounded-lg px-4 py-2 text-sm font-bold text-slate-700 outline-none hover:bg-slate-200 cursor-pointer">
-                <option value="default">預設排序 (依戶號)</option>
+                <option value="default">預設 (依戶號)</option>
                 <option value="price-asc">價格：低 → 高</option>
                 <option value="price-desc">價格：高 → 低</option>
                 <option value="ping-asc">坪數：小 → 大</option>
@@ -129,35 +140,14 @@ const UnitList = ({ units }) => {
           </div>
        </div>
 
-       {/* --- 列表網格 --- */}
        {displayUnits.length === 0 ? (
           <div className="text-center py-20 text-slate-400 font-bold bg-white rounded-xl border border-dashed border-slate-300">沒有符合條件的戶別</div>
        ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
              {displayUnits.map((u, i) => (
-                <div 
-                   key={i} 
-                   onClick={() => setSelectedUnit(u)}
-                   className={`p-4 rounded-xl border-2 font-bold text-lg flex flex-col items-center justify-center h-32 relative transition cursor-pointer hover:-translate-y-1 hover:shadow-lg group overflow-hidden
-                      ${u.status === 'sold' ? 'bg-slate-100 border-slate-200 text-slate-400' : 
-                        u.status === 'reserved' ? 'bg-yellow-50 border-yellow-400 text-yellow-700' :
-                        // 如果是熱銷推薦 (isDefaultView下)，使用特別邊框
-                        u.isHot ? 'bg-white border-red-500 text-slate-800 shadow-md ring-2 ring-red-100' :
-                        'bg-white border-slate-200 text-slate-700 hover:border-orange-500'}
-                   `}
-                >
-                   {/* 狀態標籤 */}
-                   <span className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded text-white ${u.status === 'sold' ? 'bg-slate-400' : u.status === 'reserved' ? 'bg-yellow-500' : 'bg-green-500'}`}>
-                      {u.status === 'sold' ? '售' : u.status === 'reserved' ? '訂' : '售'}
-                   </span>
-
-                   {/* 熱銷標籤 (僅在預設模式下顯示) */}
-                   {u.isHot && (
-                      <span className="absolute top-2 left-2 flex items-center gap-0.5 text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded font-black border border-red-100 animate-pulse">
-                         <Flame size={10} fill="currentColor"/> 熱銷
-                      </span>
-                   )}
-
+                <div key={i} onClick={() => setSelectedUnit(u)} className={`p-4 rounded-xl border-2 font-bold text-lg flex flex-col items-center justify-center h-32 relative transition cursor-pointer hover:-translate-y-1 hover:shadow-lg group overflow-hidden ${u.status === 'sold' ? 'bg-slate-100 border-slate-200 text-slate-400' : u.status === 'reserved' ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : u.isHot ? 'bg-white border-red-500 text-slate-800 shadow-md ring-2 ring-red-100' : 'bg-white border-slate-200 text-slate-700 hover:border-orange-500'}`}>
+                   <span className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded text-white ${u.status === 'sold' ? 'bg-slate-400' : u.status === 'reserved' ? 'bg-yellow-500' : 'bg-green-500'}`}>{u.status === 'sold' ? '售' : u.status === 'reserved' ? '訂' : '售'}</span>
+                   {u.isHot && (<span className="absolute top-2 left-2 flex items-center gap-0.5 text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded font-black border border-red-100 animate-pulse"><Flame size={10} fill="currentColor"/> 熱銷</span>)}
                    <span className="text-2xl mb-1 font-black">{u.number}</span>
                    <div className="flex flex-col items-center text-xs opacity-80 gap-0.5 w-full">
                       {u.unitPrice && <span className="text-lg font-black text-blue-600">{u.unitPrice} <span className="text-[10px] font-normal text-slate-400">萬/坪</span></span>}
@@ -169,7 +159,6 @@ const UnitList = ({ units }) => {
           </div>
        )}
 
-       {/* --- 詳細資訊彈窗 (Modal) --- */}
        <AnimatePresence>
          {selectedUnit && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setSelectedUnit(null)}>
@@ -231,6 +220,9 @@ const PropertyDetail = () => {
       </div>
       <SpecsAndFeatures specs={data.specs || []} features={data.features || []} title={data.basicInfo.title} description={data.basicInfo.description} />
       
+      {/* 新增區塊：顯示周遭環境 */}
+      <SurroundingsSection list={data.environmentList || []} />
+
       <UnitList units={data.units || []} />
       
       <LocationMap mapUrl={data.basicInfo.googleMapUrl} address={data.basicInfo.address} />

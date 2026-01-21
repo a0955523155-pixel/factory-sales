@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-// FIX: 補上 doc, getDoc
 import { collection, getDocs, limit, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection';
-import { ArrowRight, MapPin, Newspaper, Megaphone } from 'lucide-react';
+import { ArrowRight, MapPin, Newspaper, Megaphone, GraduationCap } from 'lucide-react';
 
 const Home = () => {
   const [properties, setProperties] = useState([]);
@@ -17,12 +16,9 @@ const Home = () => {
     const fetchData = async () => {
       try {
         const propRef = collection(db, "properties");
-        
-        // 1. 優先抓取「設為首頁熱銷」的案子
         let q = query(propRef, where("basicInfo.showOnHome", "==", true), limit(6)); 
         let propSnap = await getDocs(q);
         
-        // 2. 如果沒有設定任何熱銷，則抓取最新的 3 筆
         if (propSnap.empty) {
            q = query(propRef, orderBy("updatedAt", "desc"), limit(3));
            propSnap = await getDocs(q);
@@ -32,14 +28,12 @@ const Home = () => {
         propSnap.forEach((doc) => propList.push({ id: doc.id, ...doc.data() }));
         setProperties(propList);
 
-        // 3. 抓新聞
         const newsRef = collection(db, "articles");
         const newsSnap = await getDocs(query(newsRef, orderBy("createdAt", "desc"), limit(3)));
         const newsList = [];
         newsSnap.forEach((doc) => newsList.push({ id: doc.id, ...doc.data() }));
         setLatestNews(newsList);
 
-        // 4. 抓全域設定
         const settingsSnap = await getDoc(doc(db, "settings", "global"));
         if (settingsSnap.exists()) setGlobalSettings(settingsSnap.data());
 
@@ -105,7 +99,6 @@ const Home = () => {
             {properties.map((item) => (
               <Link to={`/property/${item.id}`} key={item.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 transform hover:-translate-y-2">
                 <div className="relative h-72 overflow-hidden bg-slate-200">
-                  {/* FIX: 檢查圖片網址是否存在 */}
                   {item.basicInfo.thumb ? (
                     <img src={item.basicInfo.thumb} alt={item.basicInfo.title} className="w-full h-full object-cover group-hover:scale-110 transition duration-700" />
                   ) : (
@@ -145,14 +138,14 @@ const Home = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             {latestNews.map((news) => (
-              <div key={news.id} className="border-b border-slate-100 pb-8 last:border-0 md:border-0 md:pb-0">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${news.category.includes('local') ? 'bg-blue-500' : 'bg-green-500'}`}>
-                   {news.category.includes('local') ? '本地新聞' : '新案消息'}
+              <Link to={`/article/${news.id}`} key={news.id} className="border-b border-slate-100 pb-8 last:border-0 md:border-0 md:pb-0 block group">
+                <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${news.category.includes('local') ? 'bg-blue-500' : news.category.includes('academy') ? 'bg-purple-500' : 'bg-green-500'}`}>
+                   {news.category.includes('local') ? '本地新聞' : news.category.includes('academy') ? '小學堂' : '新案消息'}
                 </span>
-                <h3 className="text-xl font-bold text-slate-900 mb-2 hover:text-orange-600 transition cursor-pointer">{news.title}</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition cursor-pointer">{news.title}</h3>
                 <p className="text-slate-400 text-sm mb-4 line-clamp-2">{news.content}</p>
                 <span className="text-xs text-slate-300 font-mono">{news.date}</span>
-              </div>
+              </Link>
             ))}
           </div>
 
@@ -172,6 +165,15 @@ const Home = () => {
                    <Megaphone className="mb-2 w-8 h-8 opacity-80"/>
                    <span className="text-lg font-bold">查看新案消息</span>
                    <span className="text-xs text-slate-400 group-hover:text-green-100 mt-1">New Projects & Launches</span>
+                </div>
+             </Link>
+
+             <Link to="/academy" className="group relative bg-slate-900 text-white px-8 py-5 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all w-full md:w-auto min-w-[240px] text-center">
+                <div className="absolute inset-0 bg-purple-600 opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                <div className="relative z-10 flex flex-col items-center">
+                   <GraduationCap className="mb-2 w-8 h-8 opacity-80"/>
+                   <span className="text-lg font-bold">房地產小學堂</span>
+                   <span className="text-xs text-slate-400 group-hover:text-purple-100 mt-1">Knowledge Base & QA</span>
                 </div>
              </Link>
           </div>

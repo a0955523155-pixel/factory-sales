@@ -33,10 +33,11 @@ const Navbar = () => {
     { name: '首頁', path: '/' },
     { 
       name: '最新動態', 
-      path: '#', 
+      path: '#', // 母選單不跳轉
       submenu: [
         { name: '本地新聞', path: '/news/local' },
-        { name: '新案消息', path: '/news/project' }
+        { name: '新案消息', path: '/news/project' },
+        { name: '房地產小學堂', path: '/academy' } // 連結到這裡
       ]
     },
     { name: '經典作品', path: '/works' },
@@ -102,7 +103,6 @@ const Navbar = () => {
             <Phone size={16} fill="currentColor" /> {settings.contactPhone}
           </a>
 
-          {/* 修改這裡：title 改為 "管理員登入" */}
           <Link to="/admin" className={`p-2 rounded-full transition hover:bg-white/20 ${textColorClass}`} title="管理員登入">
             <UserCog size={20} />
           </Link>
