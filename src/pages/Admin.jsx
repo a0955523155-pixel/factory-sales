@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   X, Plus, Trash2, Layout, Users, Settings, Map as MapIcon, Upload, Languages, FileText, Sparkles, 
   LogIn, LogOut, GripVertical, ChevronUp, ChevronDown, RefreshCcw, Copy, Zap, FolderOpen, Folder, 
-  Star, Award, History, Search, Train, Factory, MapPin, Globe, GraduationCap, Image as ImageIcon, MessageSquare 
+  Star, Award, History, Search, Train, Factory, MapPin, Globe, Image as ImageIcon, MessageSquare, Building, GraduationCap
 } from 'lucide-react';
 
 const safeStr = (val) => (val === undefined || val === null) ? "" : String(val);
@@ -40,11 +40,10 @@ const compressImage = (file) => {
   });
 };
 
-// --- AI 核心邏輯 (針對三種分類優化) ---
+// --- AI 核心邏輯 (針對三種文章屬性優化) ---
 const AI_ENGINE = {
   pick: (arr) => arr[Math.floor(Math.random() * arr.length)],
   
-  // 1. 標題生成 (根據分類)
   generateTitles: (baseTopic, category) => {
     if (category === 'academy') {
       return [
@@ -74,7 +73,6 @@ const AI_ENGINE = {
     ];
   },
 
-  // 2. 文案生成 (根據分類)
   generateContent: (title, category) => {
     if (category === 'academy') {
       return `Q：關於「${title}」，很多客戶常問到的重點是什麼？\n\nA：這是一個非常好的問題。在目前的房地產市場中，${title} 確實是大家關注的焦點。\n\n【重點一：核心觀念】\n首先，我們要理解它的基本定義... (請在此補充 Gemeni 查到的法規定義)\n\n【重點二：實務影響】\n對於自住客或投資者來說，這意味著... (請補充實際影響)\n\n【專家建議】\n我們建議您在決策前，務必諮詢專業人士，或直接聯繫綠芽團隊，我們將為您做更詳細的試算與規劃。\n\n#房地產知識 #綠芽教學 #${title}`;
@@ -86,7 +84,6 @@ const AI_ENGINE = {
     return `【${title}】\n\n隨著政府積極推動大南方計畫，${title} 近期傳出重大進展，為區域房市注入一劑強心針。\n\n根據最新消息指出，該項建設預計將大幅改善周邊交通/產業環境，並帶動大量就業人口移入。專家分析，隨著基礎建設陸續到位，周邊房價將具備強勁的支撐力道。\n\n對於正在尋找潛力標的的朋友來說，現在關注此區域正是時候。綠芽團隊將持續為您追蹤最新動態。\n\n(資料來源：整理自近期新聞報導)`;
   },
 
-  // 3. 圖片詠唱 (中文 Prompt，針對 Gemini 優化)
   generateImagePrompt: (title, category) => {
     let subject = "";
     let style = "高畫質，4k解析度，專業攝影，電影光影，細節豐富";
@@ -122,8 +119,25 @@ const Admin = () => {
   const [compressing, setCompressing] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [editId, setEditId] = useState(null);
-  const dragItem = useRef(); const dragOverItem = useRef();
+  
+  // Drag Items
+  const dragItem = useRef(); 
+  const dragOverItem = useRef();
 
+  // About Page Data (獨立)
+  const [aboutData, setAboutData] = useState({
+    title: "綠芽團隊",
+    subtitle: "深耕南台灣，專注工業地產",
+    content: "我們是一群對土地充滿熱情的專業團隊...",
+    image: "",
+    stats: [
+      { label: "在地深耕(年)", value: "10+" },
+      { label: "成交件數", value: "500+" },
+      { label: "服務客戶", value: "1000+" }
+    ]
+  });
+
+  // Property Data
   const [formData, setFormData] = useState({ 
     title: '', titleEN: '', subtitle: '', description: '',
     price: '', address: '', 
@@ -138,21 +152,19 @@ const Admin = () => {
   const [features, setFeatures] = useState([{ id: 'f1', title: "特色標題", desc: "" }]);
   const [envList, setEnvList] = useState([{ id: 'e1', title: "", desc: "", image: "", link: "" }]);
   const [progressList, setProgressList] = useState([{ id: 'p1', date: '', status: '' }]);
-  
-  const [units, setUnits] = useState([{ 
-    id: 'u1', number: '', ping: '', unitPrice: '', price: '', status: 'available', layout: '' 
-  }]);
-  
+  const [units, setUnits] = useState([{ id: 'u1', number: '', ping: '', unitPrice: '', price: '', status: 'available', layout: '' }]);
   const [batchUnitPrice, setBatchUnitPrice] = useState('');
   const [collapsedZones, setCollapsedZones] = useState({});
 
+  // Article Data (只包含新聞和QA)
   const [articleForm, setArticleForm] = useState({ category: 'news_local', title: '', content: '', date: '', image: '' });
   const [editArticleId, setEditArticleId] = useState(null);
-  const [globalSettings, setGlobalSettings] = useState({ siteName: "Factory Pro", heroTitleCN: "未來工廠", heroTitleEN: "FUTURE FACTORY", contactPhone: "0800-666-738", fbLink: "", igLink: "", lineLink: "", iconFB: "", iconIG: "", iconLINE: "" });
-
+  
   // AI 輔助狀態
   const [aiTitleSuggestions, setAiTitleSuggestions] = useState([]);
   const [aiImagePrompt, setAiImagePrompt] = useState('');
+
+  const [globalSettings, setGlobalSettings] = useState({ siteName: "Factory Pro", heroTitleCN: "未來工廠", heroTitleEN: "FUTURE FACTORY", contactPhone: "0800-666-738", fbLink: "", igLink: "", lineLink: "", iconFB: "", iconIG: "", iconLINE: "" });
 
   const historyData = useMemo(() => {
     const specLabels = new Set();
@@ -166,121 +178,8 @@ const Admin = () => {
     return { specs: Array.from(specLabels), features: Array.from(featureTitles), progress: Array.from(progressStatuses) };
   }, [properties]);
 
-  // --- 文章 AI 功能 ---
-  
-  // 1. 生成標題建議
-  const handleGenerateTitles = () => {
-    let topic = articleForm.title;
-    if (!topic) {
-       if (articleForm.category === 'academy') topic = "房地合一稅";
-       else if (articleForm.category === 'news_project') topic = "仁武廠房";
-       else topic = "高雄建設";
-    }
-    const suggestions = AI_ENGINE.generateTitles(topic, articleForm.category);
-    setAiTitleSuggestions(suggestions);
-  };
-
-  // 2. 生成內容草稿
-  const handleGenerateContent = () => {
-    if (!articleForm.title) return alert("請先輸入標題");
-    const content = AI_ENGINE.generateContent(articleForm.title, articleForm.category);
-    setArticleForm(prev => ({ ...prev, content: content }));
-  };
-
-  // 3. 生成圖片提示詞 (中文)
-  const handleGenerateImagePrompt = () => {
-    if (!articleForm.title) return alert("請先輸入標題");
-    const prompt = AI_ENGINE.generateImagePrompt(articleForm.title, articleForm.category);
-    setAiImagePrompt(prompt);
-  };
-
-  // 4. 智慧素材搜尋 (分類優化)
-  const handleArticleMaterialSearch = () => {
-    const title = articleForm.title || "房地產";
-    let query = "";
-    
-    if (articleForm.category === 'academy') {
-       // QA: 找法規、懶人包
-       query = `${title} 法規 懶人包 稅制 解釋函令`;
-    } else if (articleForm.category === 'news_project') {
-       // 建案: 找銷售素材
-       query = `${title} 接待中心 示意圖 房價`;
-    } else {
-       // 地方新聞: 找建設圖
-       query = `${title} 建設 完工示意圖 重劃區`;
-    }
-
-    window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
-  };
-
-  // --- 案場 AI 功能 ---
-  const handleSmartNewsSearch = (type) => {
-    const districtMatch = formData.address.match(/(?:縣|市)(\S+?(?:區|鄉|鎮|市))/);
-    const district = districtMatch ? districtMatch[1] : '';
-    const city = formData.city.replace('市', '').replace('縣', ''); 
-    let keywords = '';
-    switch (type) {
-      case 'traffic': keywords = `${city} ${district} 交通建設 捷運 國道 高鐵`; break;
-      case 'industry': keywords = `${city} ${district} 產業園區 科學園區 招商`; break;
-      case 'area': default: keywords = `${city} ${district} 重劃區 建設 利多`; break;
-    }
-    window.open(`https://www.google.com/search?tbm=nws&q=${encodeURIComponent(keywords)}`, '_blank');
-  };
-
-  const handleSmartNewsGenerate = () => {
-    const districtMatch = formData.address.match(/(?:縣|市)(\S+?(?:區|鄉|鎮|市))/);
-    const district = districtMatch ? districtMatch[1] : formData.city;
-    const type = formData.propertyType;
-    let title = `${district}產業新動能`, desc = `隨著${district}交通建設到位，近期${type}交易熱絡...`;
-    const newEnv = [...envList];
-    if (newEnv.length > 0 && newEnv[newEnv.length - 1].title === "") { newEnv[newEnv.length - 1] = { ...newEnv[newEnv.length - 1], title, desc }; } 
-    else { newEnv.push({ id: Date.now(), title, desc, image: "", link: "" }); }
-    setEnvList(newEnv);
-  };
-
-  const calculateTotalPrice = (ping, unitPrice) => {
-    const p = parseFloat(ping); const u = parseFloat(unitPrice);
-    return (!isNaN(p) && !isNaN(u)) ? `${(p * u).toFixed(0)} 萬` : '';
-  };
-
-  const handleUnitChange = (id, field, value) => {
-    setUnits(prev => prev.map(u => {
-      if (u.id !== id) return u;
-      const newUnit = { ...u, [field]: value };
-      if (field === 'ping' || field === 'unitPrice') { newUnit.price = calculateTotalPrice(newUnit.ping, newUnit.unitPrice); }
-      return newUnit;
-    }));
-  };
-
-  const handleDuplicateUnit = (unit) => { setUnits([{ ...unit, id: Date.now(), number: `${unit.number} (複製)`, layout: '' }, ...units]); };
-  const handleAddUnit = () => { setUnits([{ id: Date.now(), number: '', ping: '', unitPrice: '', price: '', status: 'available', layout: '' }, ...units]); };
-  const applyBatchPrice = (onlyEmpty = false) => {
-    if (!batchUnitPrice) return alert("請先輸入統一單價");
-    if (!window.confirm(onlyEmpty ? "確定要將單價填入所有「未填寫單價」的欄位嗎？" : "確定要將「所有戶別」的單價都改成這個數值嗎？")) return;
-    setUnits(units.map(u => {
-      if (onlyEmpty && u.unitPrice) return u;
-      const newPrice = calculateTotalPrice(u.ping, batchUnitPrice);
-      return { ...u, unitPrice: batchUnitPrice, price: newPrice };
-    }));
-    alert("已完成批次更新！");
-  };
-
-  const groupedUnits = useMemo(() => {
-    const groups = {};
-    units.forEach(u => {
-      const zone = u.number ? u.number.charAt(0).toUpperCase() : '未分類';
-      const zoneKey = /^[A-Z]$/.test(zone) ? zone : '其他';
-      if (!groups[zoneKey]) groups[zoneKey] = [];
-      groups[zoneKey].push(u);
-    });
-    return Object.keys(groups).sort().reduce((obj, key) => { obj[key] = groups[key]; return obj; }, {});
-  }, [units]);
-
-  const toggleZone = (zone) => { setCollapsedZones(prev => ({ ...prev, [zone]: !prev[zone] })); };
-
   useEffect(() => { const storedAuth = localStorage.getItem('isAuth'); if (storedAuth === 'true') { setIsAuth(true); fetchAll(); } }, []);
-  const fetchAll = () => { fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles(); };
+  const fetchAll = () => { fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles(); fetchAbout(); };
   const handleLogin = (e) => { e.preventDefault(); if (loginForm.user === 'gst0800666738' && loginForm.pass === '0800666738') { setIsAuth(true); localStorage.setItem('isAuth', 'true'); fetchAll(); } else { alert("帳號或密碼錯誤"); } };
   const handleLogout = () => { if (window.confirm("登出？")) { setIsAuth(false); localStorage.removeItem('isAuth'); navigate('/'); } };
 
@@ -288,6 +187,7 @@ const Admin = () => {
   const fetchArticles = async () => { try { const snap = await getDocs(collection(db, "articles")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); list.sort((a, b) => { if (a.order !== undefined && b.order !== undefined) return a.order - b.order; return (b.createdAt || 0) - (a.createdAt || 0); }); setArticles(list); } catch (e) {} };
   const fetchGlobalSettings = async () => { try { const docSnap = await getDoc(doc(db, "settings", "global")); if (docSnap.exists()) setGlobalSettings(docSnap.data()); } catch (e) {} };
   const fetchCustomers = async () => { try { const snap = await getDocs(collection(db, "customers")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); setCustomers(list); } catch (e) {} };
+  const fetchAbout = async () => { try { const docSnap = await getDoc(doc(db, "settings", "about")); if (docSnap.exists()) setAboutData(docSnap.data()); } catch (e) {} };
 
   const loadEdit = (item) => {
     setEditId(item.id); const info = item.basicInfo || {};
@@ -319,17 +219,53 @@ const Admin = () => {
 
   const handleSubmit = async (e) => { e.preventDefault(); setLoading(true); const payload = { basicInfo: formData, specs, features, environmentList: envList, progressHistory: progressList, units, images: formData.images, updatedAt: new Date() }; if (editId) await updateDoc(doc(db, "properties", editId), payload); else await addDoc(collection(db, "properties"), payload); alert("儲存成功！"); window.location.reload(); setLoading(false); };
   const handleArticleSubmit = async (e) => { e.preventDefault(); setLoading(true); const payload = { ...articleForm, createdAt: Date.now(), updatedAt: new Date(), order: -Date.now() }; if (editArticleId) { delete payload.order; await updateDoc(doc(db, "articles", editArticleId), payload); } else { await addDoc(collection(db, "articles"), payload); } alert("發布成功！"); setArticleForm({ category: 'news_local', title: '', content: '', date: '', image: '' }); setEditArticleId(null); fetchArticles(); setLoading(false); };
+  const handleAboutSubmit = async () => { setLoading(true); await setDoc(doc(db, "settings", "about"), aboutData); alert("關於我們已更新！"); setLoading(false); };
+
   const handleTranslate = async () => { if (!formData.title) return alert("請先輸入中文"); setTranslating(true); try { const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(formData.title)}&langpair=zh-TW|en`); const data = await response.json(); if (data.responseData.translatedText) setFormData(prev => ({ ...prev, titleEN: data.responseData.translatedText })); } catch (error) {} setTranslating(false); };
   const handleAIWrite = () => { if (!articleForm.title) return alert("請輸入標題"); const templates = [`【${articleForm.title}】\n\n隨著產業需求增長...`]; setArticleForm(prev => ({ ...prev, content: templates[0] })); };
   const handleSaveSettings = async () => { setLoading(true); await setDoc(doc(db, "settings", "global"), globalSettings); alert("已更新"); window.location.reload(); setLoading(false); };
   const handleDeleteProperty = async (e, id) => { e.stopPropagation(); if (!window.confirm("刪除？")) return; await deleteDoc(doc(db, "properties", id)); fetchProperties(); };
   const handleDeleteArticle = async (id) => { if (!window.confirm("刪除？")) return; await deleteDoc(doc(db, "articles", id)); fetchArticles(); };
+  
+  // AI Functions
+  const handleGenerateTitles = () => { setAiTitleSuggestions(AI_ENGINE.generateTitles(articleForm.title || "房地產", articleForm.category)); };
+  const handleGenerateContent = () => { if (!articleForm.title) return alert("請先輸入標題"); setArticleForm(prev => ({ ...prev, content: AI_ENGINE.generateContent(articleForm.title, articleForm.category) })); };
+  const handleGenerateImagePrompt = () => { if (!articleForm.title) return alert("請先輸入標題"); setAiImagePrompt(AI_ENGINE.generateImagePrompt(articleForm.title, articleForm.category)); };
+  
+  // 智慧素材搜尋 (分類優化)
+  const handleArticleMaterialSearch = () => {
+    const title = articleForm.title || "房地產";
+    let query = "";
+    if (articleForm.category === 'academy') query = `${title} 法規 懶人包 稅制 解釋函令`;
+    else if (articleForm.category === 'news_project') query = `${title} 接待中心 示意圖 房價`;
+    else query = `${title} 建設 完工示意圖 重劃區`;
+    window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
+  };
+
+  const handleSmartNewsSearch = (type) => { 
+    const city = formData.city.replace('市', '').replace('縣', ''); 
+    const keywords = type === 'traffic' ? `${city} 交通建設` : type === 'industry' ? `${city} 產業園區` : `${city} 重劃區`;
+    window.open(`https://www.google.com/search?tbm=nws&q=${encodeURIComponent(keywords)}`, '_blank');
+  };
+  const handleSmartNewsGenerate = () => { setEnvList([...envList, { id: Date.now(), title: `${formData.city}利多`, desc: "AI 生成中...", image: "", link: "" }]); };
+
+  // Unit helpers
+  const calculateTotalPrice = (ping, unitPrice) => { const p = parseFloat(ping); const u = parseFloat(unitPrice); return (!isNaN(p) && !isNaN(u)) ? `${(p * u).toFixed(0)} 萬` : ''; };
+  const handleUnitChange = (id, field, value) => { setUnits(prev => prev.map(u => { if (u.id !== id) return u; const newUnit = { ...u, [field]: value }; if (field === 'ping' || field === 'unitPrice') { newUnit.price = calculateTotalPrice(newUnit.ping, newUnit.unitPrice); } return newUnit; })); };
+  const handleDuplicateUnit = (unit) => { setUnits([{ ...unit, id: Date.now(), number: `${unit.number} (複製)`, layout: '' }, ...units]); };
+  const handleAddUnit = () => { setUnits([{ id: Date.now(), number: '', ping: '', unitPrice: '', price: '', status: 'available', layout: '' }, ...units]); };
+  const applyBatchPrice = (onlyEmpty = false) => { if (!batchUnitPrice) return alert("請先輸入統一單價"); if (!window.confirm(onlyEmpty ? "確定要將單價填入所有「未填寫單價」的欄位嗎？" : "確定要將「所有戶別」的單價都改成這個數值嗎？")) return; setUnits(units.map(u => { if (onlyEmpty && u.unitPrice) return u; const newPrice = calculateTotalPrice(u.ping, batchUnitPrice); return { ...u, unitPrice: batchUnitPrice, price: newPrice }; })); alert("已完成批次更新！"); };
+  const groupedUnits = useMemo(() => { const groups = {}; units.forEach(u => { const zone = u.number ? u.number.charAt(0).toUpperCase() : '未分類'; const zoneKey = /^[A-Z]$/.test(zone) ? zone : '其他'; if (!groups[zoneKey]) groups[zoneKey] = []; groups[zoneKey].push(u); }); return Object.keys(groups).sort().reduce((obj, key) => { obj[key] = groups[key]; return obj; }, {}); }, [units]);
+  const toggleZone = (zone) => { setCollapsedZones(prev => ({ ...prev, [zone]: !prev[zone] })); };
+  
+  // Drag and drop handlers
   const moveArticle = async (index, direction) => { const newItems = [...articles]; if (direction === 'up' && index > 0) { [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]]; } else if (direction === 'down' && index < newItems.length - 1) { [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]; } else { return; } setArticles(newItems); saveOrder(newItems); };
+  const saveOrder = async (items) => { try { const batch = writeBatch(db); items.forEach((item, index) => { const ref = doc(db, "articles", item.id); batch.update(ref, { order: index }); }); await batch.commit(); } catch (e) {} };
+  const resetOrderToDate = async () => { if (!window.confirm("重排？")) return; const sorted = [...articles].sort((a, b) => new Date(b.date) - new Date(a.date)); setArticles(sorted); saveOrder(sorted); };
   const handleDragStart = (e, position) => { dragItem.current = position; };
   const handleDragEnter = (e, position) => { dragOverItem.current = position; };
   const handleDragEnd = async () => { const copyListItems = [...articles]; const dragItemContent = copyListItems[dragItem.current]; copyListItems.splice(dragItem.current, 1); copyListItems.splice(dragOverItem.current, 0, dragItemContent); dragItem.current = null; dragOverItem.current = null; setArticles(copyListItems); saveOrder(copyListItems); };
-  const saveOrder = async (items) => { try { const batch = writeBatch(db); items.forEach((item, index) => { const ref = doc(db, "articles", item.id); batch.update(ref, { order: index }); }); await batch.commit(); } catch (e) {} };
-  const resetOrderToDate = async () => { if (!window.confirm("重排？")) return; const sorted = [...articles].sort((a, b) => new Date(b.date) - new Date(a.date)); setArticles(sorted); saveOrder(sorted); };
 
   const inputStyle = "w-full bg-white border border-slate-300 text-slate-800 p-3 md:p-2.5 text-base md:text-sm focus:outline-none focus:border-orange-500 rounded-lg shadow-sm transition placeholder:text-slate-300";
   const labelStyle = "block text-xs font-bold text-slate-500 mb-1.5 tracking-wider uppercase";
@@ -342,60 +278,134 @@ const Admin = () => {
     <div className="flex flex-col lg:flex-row h-screen bg-slate-100 text-slate-800 font-sans overflow-hidden">
       <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col shrink-0">
         <div className="p-4 md:p-5 flex justify-between items-center lg:block"><h2 className="font-black text-xl text-slate-900 tracking-tight">綠芽管理員</h2><button onClick={handleLogout} className="lg:hidden text-slate-400 hover:text-red-500"><LogOut size={20}/></button></div>
-        <div className="flex lg:flex-col gap-2 p-2 overflow-x-auto lg:overflow-visible scrollbar-hide"><button onClick={() => setViewMode('properties')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'properties' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Layout size={18}/> 案場管理</button><button onClick={() => setViewMode('articles')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'articles' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><FileText size={18}/> 文章管理</button><button onClick={() => setViewMode('customers')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'customers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Users size={18}/> 客戶資料</button><button onClick={() => setViewMode('settings')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'settings' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Settings size={18}/> 網站設定</button></div>
+        <div className="flex lg:flex-col gap-2 p-2 overflow-x-auto lg:overflow-visible scrollbar-hide">
+            <button onClick={() => setViewMode('properties')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'properties' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Layout size={18}/> 案場管理</button>
+            <button onClick={() => setViewMode('articles')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'articles' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><FileText size={18}/> 文章管理</button>
+            <button onClick={() => setViewMode('customers')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'customers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Users size={18}/> 客戶資料</button>
+            <button onClick={() => setViewMode('about')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'about' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Building size={18}/> 關於頁面</button>
+            <button onClick={() => setViewMode('settings')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'settings' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Settings size={18}/> 網站設定</button>
+        </div>
         <div className="mt-auto p-4 hidden lg:block border-t border-slate-100"><button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-sm font-bold transition w-full px-4 py-2 hover:bg-red-50 rounded-xl"><LogOut size={18}/> 登出系統</button></div>
+        
         {viewMode === 'properties' && (<div className="flex-1 overflow-y-auto p-3 space-y-2 border-t lg:border-t-0 border-slate-100 hidden lg:block"><button onClick={resetForm} className="w-full py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 mb-4 shadow">+ 新增案場</button>{properties.map(p => (<div key={p.id} onClick={() => loadEdit(p)} className={`p-3 border cursor-pointer hover:bg-white rounded-xl flex justify-between items-center group transition ${editId === p.id ? 'border-orange-500 bg-white shadow-md' : 'border-slate-100 bg-slate-50'}`}><div className="font-bold text-sm truncate w-32 text-slate-700">{p.basicInfo.title}</div><div className="flex items-center gap-1">{p.basicInfo.showOnHome && <Star size={12} className="text-orange-500 fill-orange-500"/>}{p.basicInfo.isFeaturedWork && <Award size={12} className="text-blue-500 fill-blue-500"/>}<button onClick={(e) => handleDeleteProperty(e, p.id)} className="text-slate-300 hover:text-red-500 p-1"><Trash2 size={14} /></button></div></div>))}</div>)}
       </div>
 
       <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
+        
+        {/* --- 關於我們編輯器 --- */}
+        {viewMode === 'about' && (
+            <div className="p-6 md:p-10 max-w-4xl mx-auto w-full overflow-y-auto">
+                <h1 className="text-2xl md:text-3xl font-black mb-8">關於我們頁面設定</h1>
+                <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div><label className={labelStyle}>頁面主標題</label><input value={aboutData.title} onChange={e=>setAboutData({...aboutData, title: e.target.value})} className={inputStyle} /></div>
+                    <div><label className={labelStyle}>頁面副標題</label><input value={aboutData.subtitle} onChange={e=>setAboutData({...aboutData, subtitle: e.target.value})} className={inputStyle} /></div>
+                    <div><label className={labelStyle}>品牌故事 (詳細介紹)</label><textarea value={aboutData.content} onChange={e=>setAboutData({...aboutData, content: e.target.value})} className={`${inputStyle} h-48`} /></div>
+                    <div>
+                        <label className={labelStyle}>形象圖片</label>
+                        <div className="flex items-center gap-4">
+                            <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-bold text-slate-600 transition"><Upload size={16}/> 上傳圖片 <input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>setAboutData({...aboutData, image: url}))}/></label>
+                            {aboutData.image && <img src={aboutData.image} className="h-24 w-40 object-cover rounded-lg border border-slate-200 shadow-sm"/>}
+                        </div>
+                    </div>
+                    <div className="border-t border-slate-100 pt-6">
+                        <h3 className="font-bold mb-4">公司關鍵數據</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {aboutData.stats.map((stat, i) => (
+                                <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <input value={stat.label} onChange={e=>{const s=[...aboutData.stats]; s[i].label=e.target.value; setAboutData({...aboutData, stats:s})}} className="w-full bg-transparent text-xs font-bold text-slate-500 mb-1 border-b border-transparent focus:border-orange-500 outline-none" placeholder="標籤"/>
+                                    <input value={stat.value} onChange={e=>{const s=[...aboutData.stats]; s[i].value=e.target.value; setAboutData({...aboutData, stats:s})}} className="w-full bg-transparent text-xl font-black text-slate-800 border-b border-transparent focus:border-orange-500 outline-none" placeholder="數值"/>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <button onClick={handleAboutSubmit} disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-orange-600 transition shadow-lg">{loading ? "儲存中..." : "儲存設定"}</button>
+                </div>
+            </div>
+        )}
+
         {viewMode === 'settings' && (<div className="p-6 md:p-10 max-w-3xl mx-auto w-full overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">網站全域設定</h1><div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6"><div><label className={labelStyle}>左上角網站名稱</label><input value={globalSettings.siteName} onChange={e=>setGlobalSettings({...globalSettings, siteName: e.target.value})} className={inputStyle} /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>首頁大標題 (中文)</label><input value={globalSettings.heroTitleCN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleCN: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>首頁大標題 (英文)</label><input value={globalSettings.heroTitleEN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleEN: e.target.value})} className={inputStyle} /></div></div><div><label className={labelStyle}>全站聯絡電話</label><input value={globalSettings.contactPhone} onChange={e=>setGlobalSettings({...globalSettings, contactPhone: e.target.value})} className={inputStyle} /></div><h3 className="font-black border-l-4 border-orange-500 pl-2 mt-4">社群連結</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className={labelStyle}>FB 連結</label><input value={globalSettings.fbLink} onChange={e=>setGlobalSettings({...globalSettings, fbLink: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>FB 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconFB: url}))} className="text-xs"/>{globalSettings.iconFB && <img src={globalSettings.iconFB} className="h-8 w-8 rounded-full border"/>}</div><div><label className={labelStyle}>IG 連結</label><input value={globalSettings.igLink} onChange={e=>setGlobalSettings({...globalSettings, igLink: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>IG 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconIG: url}))} className="text-xs"/>{globalSettings.iconIG && <img src={globalSettings.iconIG} className="h-8 w-8 rounded-full border"/>}</div><div><label className={labelStyle}>LINE 連結</label><input value={globalSettings.lineLink} onChange={e=>setGlobalSettings({...globalSettings, lineLink: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>LINE 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconLINE: url}))} className="text-xs"/>{globalSettings.iconLINE && <img src={globalSettings.iconLINE} className="h-8 w-8 rounded-full border"/>}</div></div><button onClick={handleSaveSettings} disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-orange-600 transition shadow-lg mt-4">{loading ? "處理中..." : "儲存設定"}</button></div></div>)}
         {viewMode === 'customers' && (<div className="p-6 md:p-10 w-full max-w-7xl mx-auto overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">客戶諮詢資料表</h1><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="p-5">日期</th><th className="p-5">姓名</th><th className="p-5">電話</th><th className="p-5">行業</th><th className="p-5">需求</th><th className="p-5">坪數</th></tr></thead><tbody>{customers.map(c => (<tr key={c.id} className="border-b border-slate-100 hover:bg-orange-50/50 transition"><td className="p-5 font-mono text-slate-400">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</td><td className="p-5 font-bold text-slate-800">{c.name}</td><td className="p-5 text-orange-600 font-bold">{c.phone}</td><td className="p-5">{c.industry}</td><td className="p-5"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{c.needs}</span></td><td className="p-5">{c.ping}</td></tr>))}</tbody></table></div></div>)}
-        {viewMode === 'articles' && (<div className="flex flex-col md:flex-row h-full"><div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-4 overflow-y-auto shrink-0 max-h-[40vh] md:max-h-full"><button onClick={() => {setEditArticleId(null); setArticleForm({ category: 'news_local', title: '', content: '', date: '', image: '' });}} className="w-full bg-slate-900 text-white py-3 rounded-lg mb-4 text-sm font-bold shadow hover:bg-black transition">+ 撰寫新文章</button><div className="space-y-2"><div className="flex justify-between items-center mb-2 px-1"><p className="text-xs text-slate-400">排序</p><button onClick={resetOrderToDate} className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"><RefreshCcw size={10}/> 重排</button></div>{articles.map((a, index) => (<div key={a.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onClick={()=>loadEditArticle(a)} className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}><div className="flex flex-col gap-1 md:hidden"><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button></div><GripVertical size={16} className="text-slate-300 hidden md:block"/><div className="flex-1 min-w-0"><span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 bg-gray-500`}>{a.category}</span><div className="font-bold text-slate-800 line-clamp-1 text-sm">{a.title}</div></div><button onClick={(e) => {e.stopPropagation(); handleDeleteArticle(a.id);}} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button></div>))}</div></div><div className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50"><div className="max-w-3xl mx-auto"><div className="flex justify-between items-center mb-8"><h2 className="text-2xl md:text-3xl font-black">{editArticleId ? '編輯文章' : '新增文章'}</h2><button onClick={handleArticleSubmit} disabled={loading} className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-500 shadow-lg transition text-sm">{loading ? "發布中..." : "確認發布"}</button></div><div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>文章分類</label><select value={articleForm.category} onChange={e=>setArticleForm({...articleForm, category: e.target.value})} className={inputStyle}><option value="news_local">最新消息-地方新聞</option><option value="news_project">最新消息-建案新訊</option><option value="academy">房地產小學堂 (QA)</option><option value="works">經典作品</option><option value="about">關於我們</option></select></div><div><label className={labelStyle}>發布日期</label><input type="date" value={articleForm.date} onChange={e=>setArticleForm({...articleForm, date: e.target.value})} className={inputStyle}/></div></div>
         
-        {/* AI 標題產生器 */}
-        <div>
-          <label className={labelStyle}>文章標題</label>
-          <div className="flex gap-2">
-            <input value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} className={inputStyle} placeholder="請輸入標題，或點擊右側魔法棒..."/>
-            <button onClick={handleGenerateTitles} className="bg-purple-600 text-white px-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-1 shrink-0"><Sparkles size={16}/> 靈感</button>
-          </div>
-          {aiTitleSuggestions.length > 0 && (
-            <div className="mt-3 grid grid-cols-1 gap-2 bg-purple-50 p-3 rounded-xl border border-purple-100">
-              <span className="text-xs font-bold text-purple-800 flex items-center gap-1"><Sparkles size={12}/> AI 推薦標題 (點擊帶入)</span>
-              {aiTitleSuggestions.map((t, i) => (
-                <button key={i} onClick={() => { setArticleForm({...articleForm, title: t}); setAiTitleSuggestions([]); }} className="text-left text-sm text-slate-700 hover:text-purple-700 hover:bg-white p-2 rounded transition border border-transparent hover:border-purple-200">{t}</button>
-              ))}
+        {viewMode === 'articles' && (
+          <div className="flex flex-col md:flex-row h-full">
+            <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 bg-white p-4 overflow-y-auto shrink-0 max-h-[40vh] md:max-h-full">
+              <button onClick={() => {setEditArticleId(null); setArticleForm({ category: 'news_local', title: '', content: '', date: '', image: '' });}} className="w-full bg-slate-900 text-white py-3 rounded-lg mb-4 text-sm font-bold shadow hover:bg-black transition">+ 撰寫新文章</button>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center mb-2 px-1"><p className="text-xs text-slate-400">排序</p><button onClick={resetOrderToDate} className="text-[10px] flex items-center gap-1 text-blue-500 hover:underline"><RefreshCcw size={10}/> 重排</button></div>
+                {articles.map((a, index) => (
+                  <div key={a.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onClick={()=>loadEditArticle(a)} className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}>
+                    <div className="flex flex-col gap-1 md:hidden"><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button></div><GripVertical size={16} className="text-slate-300 hidden md:block"/>
+                    <div className="flex-1 min-w-0"><span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 ${a.category==='academy'?'bg-purple-500':a.category==='news_project'?'bg-green-500':'bg-blue-500'}`}>{a.category==='academy'?'小學堂':a.category==='news_project'?'建案':'新聞'}</span><div className="font-bold text-slate-800 line-clamp-1 text-sm">{a.title}</div></div>
+                    <button onClick={(e) => {e.stopPropagation(); handleDeleteArticle(a.id);}} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+            
+            <div className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50">
+                <div className="max-w-3xl mx-auto">
+                  <div className="flex justify-between items-center mb-8"><h2 className="text-2xl md:text-3xl font-black">{editArticleId ? '編輯文章' : '新增文章'}</h2><button onClick={handleArticleSubmit} disabled={loading} className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-500 shadow-lg transition text-sm">{loading ? "發布中..." : "確認發布"}</button></div>
+                  <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className={labelStyle}>文章分類</label>
+                            <select value={articleForm.category} onChange={e=>setArticleForm({...articleForm, category: e.target.value})} className={inputStyle}>
+                                <option value="news_local">最新消息-地方新聞</option>
+                                <option value="news_project">最新消息-建案新訊</option>
+                                <option value="academy">房地產小學堂 (QA)</option>
+                            </select>
+                        </div>
+                        <div><label className={labelStyle}>發布日期</label><input type="date" value={articleForm.date} onChange={e=>setArticleForm({...articleForm, date: e.target.value})} className={inputStyle}/></div>
+                    </div>
+                    
+                    {/* AI 標題產生器 */}
+                    <div>
+                      <label className={labelStyle}>文章標題</label>
+                      <div className="flex gap-2">
+                        <input value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} className={inputStyle} placeholder="請輸入標題，或點擊右側魔法棒..."/>
+                        <button onClick={handleGenerateTitles} className="bg-purple-600 text-white px-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-1 shrink-0"><Sparkles size={16}/> 靈感</button>
+                      </div>
+                      {aiTitleSuggestions.length > 0 && (
+                        <div className="mt-3 grid grid-cols-1 gap-2 bg-purple-50 p-3 rounded-xl border border-purple-100">
+                          <span className="text-xs font-bold text-purple-800 flex items-center gap-1"><Sparkles size={12}/> AI 推薦標題 (點擊帶入)</span>
+                          {aiTitleSuggestions.map((t, i) => (
+                            <button key={i} onClick={() => { setArticleForm({...articleForm, title: t}); setAiTitleSuggestions([]); }} className="text-left text-sm text-slate-700 hover:text-purple-700 hover:bg-white p-2 rounded transition border border-transparent hover:border-purple-200">{t}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
-        {/* AI 內容生成 & 素材搜尋 */}
-        <div className="relative"> 
-          <div className="flex justify-between items-center mb-1"> 
-            <label className={labelStyle}>文章內容</label> 
-            <div className="flex gap-2">
-              <button type="button" onClick={handleArticleMaterialSearch} className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-blue-100"><Globe size={12}/> 找素材</button>
-              <button type="button" onClick={handleGenerateContent} className="text-xs bg-purple-50 text-purple-600 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-purple-100"><MessageSquare size={12}/> 生成文案</button>
-            </div>
-          </div> 
-          <textarea value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} className={`${inputStyle} h-64 leading-relaxed`} placeholder="輸入內容，或點擊 AI 自動撰寫..."/>
-        </div>
+                    {/* AI 內容生成 & 素材搜尋 */}
+                    <div className="relative"> 
+                      <div className="flex justify-between items-center mb-1"> 
+                        <label className={labelStyle}>文章內容</label> 
+                        <div className="flex gap-2">
+                          <button type="button" onClick={handleArticleMaterialSearch} className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-blue-100"><Globe size={12}/> 找素材</button>
+                          <button type="button" onClick={handleGenerateContent} className="text-xs bg-purple-50 text-purple-600 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-purple-100"><MessageSquare size={12}/> 生成文案</button>
+                        </div>
+                      </div> 
+                      <textarea value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} className={`${inputStyle} h-64 leading-relaxed`} placeholder="輸入內容，或點擊 AI 自動撰寫..."/>
+                    </div>
 
-        {/* AI 圖片詠唱 */}
-        <div>
-          <label className={labelStyle}>封面圖片 (自動壓浮水印)</label>
-          <div className="mb-2 flex items-center gap-2">
-             <button onClick={handleGenerateImagePrompt} className="text-xs bg-green-50 text-green-700 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-green-100 border border-green-200"><ImageIcon size={12}/> 生成中文詠唱詞 (Gemini/Midjourney)</button>
-          </div>
-          {aiImagePrompt && (
-            <div className="bg-slate-800 text-slate-300 p-3 rounded-lg text-xs font-mono mb-4 relative group">
-               {aiImagePrompt}
-               <button onClick={()=>{navigator.clipboard.writeText(aiImagePrompt); alert("已複製！");}} className="absolute top-2 right-2 bg-white/10 p-1.5 rounded hover:bg-white/20 text-white"><Copy size={12}/></button>
+                    {/* AI 圖片詠唱 */}
+                    <div>
+                      <label className={labelStyle}>封面圖片 (自動壓浮水印)</label>
+                      <div className="mb-2 flex items-center gap-2">
+                         <button onClick={handleGenerateImagePrompt} className="text-xs bg-green-50 text-green-700 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-green-100 border border-green-200"><ImageIcon size={12}/> 生成中文詠唱詞 (Gemini/Midjourney)</button>
+                      </div>
+                      {aiImagePrompt && (
+                        <div className="bg-slate-800 text-slate-300 p-3 rounded-lg text-xs font-mono mb-4 relative group">
+                           {aiImagePrompt}
+                           <button onClick={()=>{navigator.clipboard.writeText(aiImagePrompt); alert("已複製！");}} className="absolute top-2 right-2 bg-white/10 p-1.5 rounded hover:bg-white/20 text-white"><Copy size={12}/></button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-4"><label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-bold text-slate-600 transition"><Upload size={16}/> 上傳圖片 <input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>setArticleForm({...articleForm, image: url}))}/></label>{articleForm.image && <img src={articleForm.image} className="h-20 w-32 object-cover rounded-lg border border-slate-200 shadow-sm"/>}</div>
+                    </div>
+                  </div>
+                </div>
             </div>
-          )}
-          <div className="flex items-center gap-4"><label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-bold text-slate-600 transition"><Upload size={16}/> 上傳圖片 <input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>setArticleForm({...articleForm, image: url}))}/></label>{articleForm.image && <img src={articleForm.image} className="h-20 w-32 object-cover rounded-lg border border-slate-200 shadow-sm"/>}</div>
-        </div>
-      </div></div></div></div>)}
+          </div>
+        )}
         
         {viewMode === 'properties' && (
           <>

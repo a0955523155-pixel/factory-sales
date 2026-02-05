@@ -33,14 +33,14 @@ const Navbar = () => {
     { name: '首頁', path: '/' },
     { 
       name: '最新動態', 
-      path: '#', // 母選單不跳轉
+      path: '#', 
       submenu: [
         { name: '本地新聞', path: '/news/local' },
-        { name: '新案消息', path: '/news/project' },
-        { name: '房地產小學堂', path: '/academy' } // 連結到這裡
+        { name: '新案消息', path: '/news/project' }
       ]
     },
     { name: '經典作品', path: '/works' },
+    { name: '房地產小學堂', path: '/academy' },
     { name: '關於我們', path: '/about' },
     { name: '聯絡諮詢', path: '/contact' },
   ];

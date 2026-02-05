@@ -152,7 +152,7 @@ const UnitList = ({ units }) => {
                    <div className="flex flex-col items-center text-xs opacity-80 gap-0.5 w-full">
                       {u.unitPrice && <span className="text-lg font-black text-blue-600">{u.unitPrice} <span className="text-[10px] font-normal text-slate-400">萬/坪</span></span>}
                       <span className={`text-[10px] ${u.status!=='sold'?'text-red-500':''}`}>總價: {u.price}</span>
-                      <span className="text-slate-400 text-[10px]">{u.ping} 坪</span>
+                      <span className="text-slate-400 text-[10px]">{(parseFloat(u.ping)||0).toFixed(2)} 坪</span>
                    </div>
                 </div>
              ))}
