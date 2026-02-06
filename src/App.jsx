@@ -6,7 +6,8 @@ const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
 const Admin = lazy(() => import('./pages/Admin'));
 const ArticlePage = lazy(() => import('./pages/ArticlePage'));
 const Contact = lazy(() => import('./pages/Contact'));
-const About = lazy(() => import('./pages/About')); // 新增
+const About = lazy(() => import('./pages/About'));
+const ArticleDetail = lazy(() => import('./pages/ArticleDetail')); // 新增引入
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -21,9 +22,11 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/property/:id" element={<PropertyDetail />} />
+          <Route path="/article/:id" element={<ArticleDetail />} /> {/* 新增文章詳情路由 */}
+          
           <Route path="/admin" element={<Admin />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/about" element={<About />} /> {/* 更新路由 */}
+          <Route path="/about" element={<About />} />
           
           <Route path="/news/local" element={<ArticlePage category="news_local" title="本地新聞" />} />
           <Route path="/news/project" element={<ArticlePage category="news_project" title="新案消息" />} />

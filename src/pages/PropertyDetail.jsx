@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, Flame, Newspaper, ExternalLink } from 'lucide-react';
+import { MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, Flame, Medal, Newspaper, ExternalLink } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection'; 
 
-// --- 規格與特色 ---
+// --- 規格與特色 (保持不變) ---
 const SpecsAndFeatures = ({ specs, features, title, description }) => (
   <section className="py-20 px-6 max-w-7xl mx-auto">
     <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden">
@@ -31,12 +31,12 @@ const SpecsAndFeatures = ({ specs, features, title, description }) => (
   </section>
 );
 
-// --- 新增：周遭環境與新聞區塊 ---
+// --- 周遭環境與新聞區塊 (保持不變) ---
 const SurroundingsSection = ({ list }) => {
   if (!list || list.length === 0 || (list.length === 1 && !list[0].title)) return null;
 
   return (
-    <section className="py-16 px-6 max-w-7xl mx-auto bg-white">
+    <section className="py-16 px-6 max-w-7xl mx-auto">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-black text-slate-900 flex items-center justify-center gap-2">
           <Newspaper className="text-orange-500"/> 周遭環境與建設利多
@@ -46,12 +46,12 @@ const SurroundingsSection = ({ list }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {list.map((item, index) => (
           item.title && (
-            <div key={index} className="bg-slate-50 border border-slate-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition group relative overflow-hidden flex flex-col">
+            <div key={index} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-lg hover:shadow-xl transition group relative overflow-hidden">
                <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
                <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-orange-600 transition">{item.title}</h3>
-               <p className="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-4 flex-1">{item.desc}</p>
+               <p className="text-slate-500 text-sm leading-relaxed mb-4 line-clamp-4">{item.desc}</p>
                {item.link && (
-                 <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline mt-auto">
+                 <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 flex items-center gap-1 hover:underline">
                    閱讀相關報導 <ExternalLink size={14}/>
                  </a>
                )}
@@ -63,7 +63,7 @@ const SurroundingsSection = ({ list }) => {
   );
 };
 
-// --- 智慧型戶別列表 ---
+// --- 智慧型戶別列表 (修改處) ---
 const UnitList = ({ units }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [filterZone, setFilterZone] = useState('All');
@@ -72,16 +72,14 @@ const UnitList = ({ units }) => {
 
   if (!units || units.length === 0) return null;
 
-  // 1. 自動提取所有區域
-  const zones = React.useMemo(() => {
+  const zones = useMemo(() => {
     const uniqueZones = new Set(units.map(u => u.number.charAt(0).toUpperCase()));
     return ['All', ...Array.from(uniqueZones).sort()];
   }, [units]);
 
   const isDefaultView = filterZone === 'All' && filterStatus === 'All';
 
-  // 2. 處理列表邏輯
-  const displayUnits = React.useMemo(() => {
+  const displayUnits = useMemo(() => {
     const parseNum = (str) => parseFloat(str?.replace(/[^0-9.]/g, '') || 0);
     let result = [...units];
 
@@ -118,7 +116,8 @@ const UnitList = ({ units }) => {
           <div className="flex flex-wrap gap-3 items-center">
              <div className="flex items-center gap-2 text-slate-500 font-bold text-sm"><Filter size={16}/> 區域/狀態：</div>
              <select value={filterZone} onChange={(e)=>setFilterZone(e.target.value)} className="bg-slate-100 border-none rounded-lg px-4 py-2 text-sm font-bold text-slate-700 outline-none hover:bg-slate-200 cursor-pointer">
-                <option value="All">所有區域</option>
+                {/* FIX: 將 '所有區域' 改為 '熱銷中' */}
+                <option value="All">熱銷中</option>
                 {zones.filter(z=>z!=='All').map(z => <option key={z} value={z}>{z} 區</option>)}
              </select>
              <select value={filterStatus} onChange={(e)=>setFilterStatus(e.target.value)} className="bg-slate-100 border-none rounded-lg px-4 py-2 text-sm font-bold text-slate-700 outline-none hover:bg-slate-200 cursor-pointer">
@@ -171,7 +170,7 @@ const UnitList = ({ units }) => {
                      <div className="grid grid-cols-2 gap-4">
                         <div className="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
                            <span className="block text-xs text-slate-400 font-bold uppercase mb-1">登記坪數</span>
-                           <span className="text-2xl font-black text-slate-800">{selectedUnit.ping} <span className="text-sm font-medium text-slate-500">坪</span></span>
+                           <span className="text-2xl font-black text-slate-800">{(parseFloat(selectedUnit.ping)||0).toFixed(2)} <span className="text-sm font-medium text-slate-500">坪</span></span>
                         </div>
                         <div className="bg-slate-50 p-4 rounded-2xl text-center border border-slate-100">
                            <span className="block text-xs text-slate-400 font-bold uppercase mb-1">單價</span>
@@ -193,6 +192,7 @@ const UnitList = ({ units }) => {
   );
 };
 
+// --- 下方組件保持不變 ---
 const LocationMap = ({ mapUrl, address }) => { if (!mapUrl) return null; return ( <section className="py-20 px-6 max-w-7xl mx-auto"><div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden"><div className="bg-slate-900 px-8 py-4 flex items-center justify-between"><h3 className="text-white font-bold flex items-center gap-2"><MapPin className="text-orange-500"/> 物件位置</h3><span className="text-slate-400 text-sm font-mono">{address}</span></div><div className="aspect-video w-full"><iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe></div></div></section> ); };
 
 const PropertyDetail = () => {
@@ -209,7 +209,8 @@ const PropertyDetail = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/grid-me.png')] opacity-20 pointer-events-none"></div>
         <div className="relative z-10 h-full flex flex-col justify-end pb-24 px-6 max-w-7xl mx-auto">
-          <Link to="/" className="absolute top-28 left-6 md:left-auto text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition"><ArrowLeft size={20}/> 回列表</Link>
+          {/* 連結已修正 */}
+          <Link to="/works" className="absolute top-28 left-6 md:left-auto text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition"><ArrowLeft size={20}/> 回經典作品</Link>
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="md:w-3/4">
             <span className="bg-orange-600 text-white px-4 py-1 text-sm font-bold uppercase tracking-widest rounded-sm mb-6 inline-block shadow-lg shadow-orange-500/50">Premium Industrial Asset</span>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-tight drop-shadow-lg">{data.basicInfo.title}</h1>
@@ -220,7 +221,6 @@ const PropertyDetail = () => {
       </div>
       <SpecsAndFeatures specs={data.specs || []} features={data.features || []} title={data.basicInfo.title} description={data.basicInfo.description} />
       
-      {/* 新增區塊：顯示周遭環境 */}
       <SurroundingsSection list={data.environmentList || []} />
 
       <UnitList units={data.units || []} />

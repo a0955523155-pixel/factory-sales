@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection';
-import { Calendar, ArrowRight, MapPin, Filter, Search, Building2, Ruler, Banknote, Map, Briefcase, Award, Flame, Clock } from 'lucide-react';
+import { Calendar, ArrowRight, MapPin, Filter, Search, Building2, Ruler, Banknote, Map, Briefcase, Award, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ArticlePage = ({ categoryGroup, category, title }) => {
@@ -37,11 +37,11 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
              else if (categoryGroup && item.category?.includes(categoryGroup)) list.push({ id: doc.id, ...item });
              else if (!category && !categoryGroup) list.push({ id: doc.id, ...item });
           } else {
+             // 計算該案場的「總」坪數 (僅用於卡片顯示)
              const totalPing = item.units ? item.units.reduce((acc, u) => acc + (parseFloat(u.ping) || 0), 0) : 0;
              const addr = item.basicInfo?.address || "";
              const districtMatch = addr.match(/(?:縣|市)(\S+?(?:區|鄉|鎮|市))/);
              const district = districtMatch ? districtMatch[1] : '其他';
-             // 這裡先不 toFixed，留著數字型態給篩選邏輯用，顯示時再轉
              list.push({ id: doc.id, ...item, computedPing: totalPing, computedDistrict: district });
           }
         });
@@ -51,23 +51,25 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
     fetchData();
   }, [categoryGroup, category, isWorksPage]);
 
+  // --- 指定坪數區間選項 ---
+  const pingOptions = [
+    { label: '不限坪數', value: 'All' },
+    { label: '80 ~ 120 坪', value: '80-120' },
+    { label: '120 ~ 200 坪', value: '120-200' },
+    { label: '200 坪以上', value: '>200' }
+  ];
+
   // 狀態邏輯
   const getProjectStatus = (item) => {
     const units = item.units || [];
     const totalUnits = units.length;
-    
     if (totalUnits === 0) return { type: 'coming', label: '即將上市', subLabel: 'Coming Soon', priceDisplay: '價格研擬中' };
-
     const availableUnits = units.filter(u => u.status === 'available');
-    const availableCount = availableUnits.length;
-
-    if (availableCount === 0) return { type: 'soldout', label: '完售', subLabel: 'SOLD', priceDisplay: item.basicInfo?.price };
-
+    if (availableUnits.length === 0) return { type: 'soldout', label: '完售', subLabel: 'SOLD', priceDisplay: item.basicInfo?.price };
     const prices = availableUnits.map(u => parseFloat(u.price?.replace(/[^0-9.]/g, '') || 0)).filter(n => n > 0);
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
     const displayPrice = minPrice > 0 ? `${minPrice} 萬起` : item.basicInfo?.price;
-
-    return { type: 'selling', label: '熱銷', count: availableCount, priceDisplay: displayPrice };
+    return { type: 'selling', label: '熱銷', count: availableUnits.length, priceDisplay: displayPrice };
   };
 
   const filteredWorks = useMemo(() => {
@@ -79,6 +81,8 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
       if (filters.type !== 'All' && info.propertyType !== filters.type) return false;
       if (filters.transaction !== 'All' && info.transactionType !== filters.transaction) return false;
       if (filters.usage !== 'All' && info.usageType !== filters.usage) return false;
+      
+      // 價格篩選
       if (filters.price !== 'All') {
         const priceVal = parseFloat(info.price?.replace(/[^0-9.]/g, '') || 0);
         if (filters.price === '<1000' && priceVal >= 1000) return false;
@@ -86,12 +90,30 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
         if (filters.price === '3000-6000' && (priceVal < 3000 || priceVal > 6000)) return false;
         if (filters.price === '>6000' && priceVal <= 6000) return false;
       }
+
+      // --- 坪數篩選 (針對戶別) ---
       if (filters.ping !== 'All') {
-        const p = item.computedPing;
-        if (filters.ping === '<100' && p >= 100) return false;
-        if (filters.ping === '100-300' && (p < 100 || p > 300)) return false;
-        if (filters.ping === '300-500' && (p < 300 || p > 500)) return false;
-        if (filters.ping === '>500' && p <= 500) return false;
+        let hasMatchingUnit = false;
+        
+        if (filters.ping === '>200') {
+            // 判斷 200坪以上
+            hasMatchingUnit = (item.units || []).some(u => {
+                const p = parseFloat(u.ping);
+                return !isNaN(p) && p >= 200;
+            });
+        } else {
+            // 判斷區間 (如 80-120)
+            const [minStr, maxStr] = filters.ping.split('-');
+            const min = parseFloat(minStr);
+            const max = parseFloat(maxStr);
+            
+            hasMatchingUnit = (item.units || []).some(u => {
+                const p = parseFloat(u.ping);
+                return !isNaN(p) && p >= min && p <= max;
+            });
+        }
+
+        if (!hasMatchingUnit) return false;
       }
       return true;
     });
@@ -99,14 +121,8 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
 
   const groupedWorks = useMemo(() => {
     const groups = {};
-    filteredWorks.forEach(item => {
-      const type = item.basicInfo?.propertyType || '未分類';
-      if (!groups[type]) groups[type] = [];
-      groups[type].push(item);
-    });
-    Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => (b.basicInfo?.isFeaturedWork === true ? 1 : 0) - (a.basicInfo?.isFeaturedWork === true ? 1 : 0));
-    });
+    filteredWorks.forEach(item => { const type = item.basicInfo?.propertyType || '未分類'; if (!groups[type]) groups[type] = []; groups[type].push(item); });
+    Object.keys(groups).forEach(key => { groups[key].sort((a, b) => (b.basicInfo?.isFeaturedWork === true ? 1 : 0) - (a.basicInfo?.isFeaturedWork === true ? 1 : 0)); });
     return groups;
   }, [filteredWorks]);
 
@@ -143,9 +159,10 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
                 <FilterSelect icon={MapPin} label="區域" value={filters.district} onChange={v => setFilters({...filters, district: v})} options={availableDistricts.map(d => ({label: d==='All'?'所有區域':d, value: d}))} />
                 <FilterSelect icon={Building2} label="案件屬性" value={filters.type} onChange={v => setFilters({...filters, type: v})} options={[{label:'所有屬性', value:'All'}, {label:'工業地', value:'工業地'}, {label:'農地', value:'農地'}, {label:'建地', value:'建地'}]} />
                 <FilterSelect icon={Briefcase} label="交易類別" value={filters.transaction} onChange={v => setFilters({...filters, transaction: v})} options={[{label:'不限', value:'All'}, {label:'出售', value:'出售'}, {label:'出租', value:'出租'}]} />
-                <FilterSelect icon={Building2} label="用途" value={filters.usage} onChange={v => setFilters({...filters, usage: v})} options={[{label:'不限', value:'All'}, {label:'廠房', value:'廠房'}, {label:'透天', value:'透天'}, {label:'農地', value:'農地'}, {label:'其他', value:'其他'}]} />
+                <FilterSelect icon={Building2} label="用途" value={filters.usage} onChange={v => setFilters({...filters, usage: v})} options={[{label:'不限', value:'All'}, {label:'廠房', value:'廠房'}, {label:'透天', value:'透天'}, {label:'農地', value:'農地'}]} />
                 <FilterSelect icon={Banknote} label="預算總價" value={filters.price} onChange={v => setFilters({...filters, price: v})} options={[{label:'不限預算', value:'All'}, {label:'1000萬以下', value:'<1000'}, {label:'1000-3000萬', value:'1000-3000'}, {label:'3000-6000萬', value:'3000-6000'}, {label:'6000萬以上', value:'>6000'}]} />
-                <FilterSelect icon={Ruler} label="總坪數" value={filters.ping} onChange={v => setFilters({...filters, ping: v})} options={[{label:'不限坪數', value:'All'}, {label:'100坪以下', value:'<100'}, {label:'100-300坪', value:'100-300'}, {label:'300-500坪', value:'300-500'}, {label:'500坪以上', value:'>500'}]} />
+                {/* FIX: 使用指定的區間選項 */}
+                <FilterSelect icon={Ruler} label="坪數" value={filters.ping} onChange={v => setFilters({...filters, ping: v})} options={pingOptions} />
              </div>
              <button onClick={() => setFilters({ city: 'All', district: 'All', type: 'All', transaction: 'All', usage: 'All', price: 'All', ping: 'All' })} className="mt-4 w-full bg-slate-100 text-slate-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition">重置篩選</button>
           </div>
@@ -179,14 +196,12 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
                           </div>
                           <div className="absolute bottom-4 left-4 text-white">
                              <h3 className="text-xl font-bold leading-tight mb-1 drop-shadow-md">{item.basicInfo?.title || '未命名案件'}</h3>
-                             {/* FIX: 小數點第二位 */}
                              <p className="text-xs opacity-90 font-mono">{item.computedPing > 0 ? `總坪數約 ${item.computedPing.toFixed(2)} 坪` : '詳情請洽專員'}</p>
                           </div>
                         </div>
                         <div className="p-5 flex flex-col flex-1">
                           <div className="flex justify-between items-center mb-4">
                              <span className={`text-2xl font-black ${status.type === 'soldout' ? 'text-slate-400 line-through' : 'text-orange-600'}`}>{status.priceDisplay}</span>
-                             {/* FIX: 顯示 transactionType (交易類別) */}
                              <span className="text-xs text-slate-400 font-bold border border-slate-200 px-2 py-1 rounded">{item.basicInfo?.transactionType || '出售'}</span>
                           </div>
                           <p className="text-slate-500 text-sm line-clamp-2 mb-4 flex-1">{item.basicInfo?.description || '暫無描述...'}</p>
@@ -206,7 +221,7 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
           {loading ? ( <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-t-4 border-orange-500"></div></div> ) : dataList.length === 0 ? ( <div className="text-center py-20 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300"><p className="text-lg font-bold">目前尚無相關文章</p></div> ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {dataList.map((article) => (
-                <div key={article.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 group border border-slate-100 flex flex-col h-full">
+                <Link to={`/article/${article.id}`} key={article.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 group border border-slate-100 flex flex-col h-full cursor-pointer">
                   <div className="aspect-video w-full overflow-hidden bg-slate-100 relative">
                      {article.image ? ( <img src={article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" /> ) : ( <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50 font-black text-2xl">NO IMAGE</div> )}
                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-800 shadow-sm flex items-center gap-1"><Calendar size={12} className="text-orange-500"/> {article.date}</div>
@@ -214,9 +229,9 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
                   <div className="p-6 flex flex-col flex-1">
                     <h3 className="text-xl font-bold text-slate-800 mb-3 line-clamp-2 leading-tight group-hover:text-orange-600 transition">{article.title}</h3>
                     <p className="text-slate-500 text-sm line-clamp-3 mb-6 flex-1 leading-relaxed">{article.content ? article.content.substring(0, 100).replace(/[#*`]/g, '') : ''}...</p>
-                    <button className="text-orange-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all mt-auto">閱讀更多 <ArrowRight size={16}/></button>
+                    <span className="text-orange-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all mt-auto">閱讀更多 <ArrowRight size={16}/></span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

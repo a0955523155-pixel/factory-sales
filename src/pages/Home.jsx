@@ -47,18 +47,13 @@ const Home = () => {
   const getProjectStatus = (item) => {
     const units = item.units || [];
     const totalUnits = units.length;
-    
     if (totalUnits === 0) return { type: 'coming', label: '即將上市', subLabel: '敬請期待', priceDisplay: '價格研擬中' };
-
     const availableUnits = units.filter(u => u.status === 'available');
     const availableCount = availableUnits.length;
-
     if (availableCount === 0) return { type: 'soldout', label: '全案完售', subLabel: 'SOLD OUT', priceDisplay: item.basicInfo.price };
-
     const prices = availableUnits.map(u => parseFloat(u.price?.replace(/[^0-9.]/g, '') || 0)).filter(n => n > 0);
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
     const displayPrice = minPrice > 0 ? `${minPrice} 萬起` : item.basicInfo.price;
-
     return { type: 'selling', label: '熱銷中', count: availableCount, priceDisplay: displayPrice };
   };
 
@@ -127,48 +122,21 @@ const Home = () => {
                     
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition" />
                     
-                    {status.type === 'coming' && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-                         <div className="text-center">
-                            <span className="block text-2xl font-black text-white tracking-widest mb-1">{status.label}</span>
-                            <span className="text-sm font-bold text-blue-300 uppercase tracking-widest">{status.subLabel}</span>
-                         </div>
-                      </div>
-                    )}
-
-                    {status.type === 'soldout' && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                         <div className="border-4 border-white/80 p-4 transform -rotate-12">
-                            <span className="text-3xl font-black text-white tracking-widest uppercase">SOLD OUT</span>
-                         </div>
-                      </div>
-                    )}
-
-                    {status.type === 'selling' && (
-                      <div className="absolute top-4 right-4 bg-orange-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-lg flex items-center gap-1 animate-pulse">
-                         <Flame size={14} fill="currentColor"/> 剩餘 {status.count} 戶
-                      </div>
-                    )}
+                    {status.type === 'coming' && <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"><div className="text-center"><span className="block text-2xl font-black text-white tracking-widest mb-1">{status.label}</span><span className="text-sm font-bold text-blue-300 uppercase tracking-widest">{status.subLabel}</span></div></div>}
+                    {status.type === 'soldout' && <div className="absolute inset-0 flex items-center justify-center bg-black/60"><div className="border-4 border-white/80 p-4 transform -rotate-12"><span className="text-3xl font-black text-white tracking-widest uppercase">SOLD OUT</span></div></div>}
+                    {status.type === 'selling' && <div className="absolute top-4 right-4 bg-orange-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-lg flex items-center gap-1 animate-pulse"><Flame size={14} fill="currentColor"/> 剩餘 {status.count} 戶</div>}
 
                     <div className="absolute bottom-6 left-6 text-white">
                       <h3 className="text-2xl font-bold leading-tight mb-1 drop-shadow-md">{item.basicInfo.title}</h3>
-                      {/* FIX: 顯示 Transaction Type (出售/出租) */}
+                      {/* FIX: 顯示 Transaction Type */}
                       <p className="text-sm opacity-90 flex items-center gap-1"><MapPin size={14}/> {item.basicInfo.city} {item.basicInfo.transactionType || '出售'}</p>
                     </div>
                   </div>
 
                   <div className="p-8 flex flex-col flex-1">
                     <p className="text-slate-500 line-clamp-2 mb-6 h-12 text-sm leading-relaxed">{item.basicInfo.description}</p>
-                    
                     <div className="mt-auto flex justify-between items-center border-t border-slate-100 pt-6">
-                      <div className="flex flex-col">
-                         <span className="text-xs font-bold text-slate-400 uppercase">
-                            {status.type === 'coming' ? '預計售價' : status.type === 'soldout' ? '成交總價' : '最低總價'}
-                         </span>
-                         <span className={`text-2xl font-black ${status.type === 'soldout' ? 'text-slate-400 line-through decoration-2' : 'text-slate-900'}`}>
-                            {status.priceDisplay}
-                         </span>
-                      </div>
+                      <div className="flex flex-col"><span className="text-xs font-bold text-slate-400 uppercase">{status.type === 'coming' ? '預計售價' : status.type === 'soldout' ? '成交總價' : '最低總價'}</span><span className={`text-2xl font-black ${status.type === 'soldout' ? 'text-slate-400 line-through decoration-2' : 'text-slate-900'}`}>{status.priceDisplay}</span></div>
                       <span className="text-orange-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all">詳情 <ArrowRight size={16}/></span>
                     </div>
                   </div>
@@ -193,37 +161,27 @@ const Home = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             {latestNews.map((news) => (
-              <div key={news.id} className="border-b border-slate-100 pb-8 last:border-0 md:border-0 md:pb-0">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${news.category.includes('local') ? 'bg-blue-500' : 'bg-green-500'}`}>
-                   {news.category.includes('local') ? '本地新聞' : '新案消息'}
+              <Link to={`/article/${news.id}`} key={news.id} className="border-b border-slate-100 pb-8 last:border-0 md:border-0 md:pb-0 block group cursor-pointer">
+                <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${news.category.includes('local') ? 'bg-blue-500' : news.category==='academy'?'bg-purple-500':'bg-green-500'}`}>
+                   {news.category.includes('local') ? '本地新聞' : news.category==='academy'?'小學堂':'新案消息'}
                 </span>
-                <h3 className="text-xl font-bold text-slate-900 mb-2 hover:text-orange-600 transition cursor-pointer">{news.title}</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition">{news.title}</h3>
                 <p className="text-slate-400 text-sm mb-4 line-clamp-2">{news.content}</p>
                 <span className="text-xs text-slate-300 font-mono">{news.date}</span>
-              </div>
+              </Link>
             ))}
           </div>
 
           <div className="flex flex-col md:flex-row gap-6 justify-center">
              <Link to="/news/local" className="group relative bg-slate-900 text-white px-8 py-5 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all w-full md:w-auto min-w-[240px] text-center">
                 <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-100 transition duration-500"></div>
-                <div className="relative z-10 flex flex-col items-center">
-                   <Newspaper className="mb-2 w-8 h-8 opacity-80"/>
-                   <span className="text-lg font-bold">查看本地新聞</span>
-                   <span className="text-xs text-slate-400 group-hover:text-blue-100 mt-1">Local News & Updates</span>
-                </div>
+                <div className="relative z-10 flex flex-col items-center"><Newspaper className="mb-2 w-8 h-8 opacity-80"/><span className="text-lg font-bold">查看本地新聞</span><span className="text-xs text-slate-400 group-hover:text-blue-100 mt-1">Local News & Updates</span></div>
              </Link>
-
              <Link to="/news/project" className="group relative bg-slate-900 text-white px-8 py-5 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all w-full md:w-auto min-w-[240px] text-center">
                 <div className="absolute inset-0 bg-green-600 opacity-0 group-hover:opacity-100 transition duration-500"></div>
-                <div className="relative z-10 flex flex-col items-center">
-                   <Megaphone className="mb-2 w-8 h-8 opacity-80"/>
-                   <span className="text-lg font-bold">查看新案消息</span>
-                   <span className="text-xs text-slate-400 group-hover:text-green-100 mt-1">New Projects & Launches</span>
-                </div>
+                <div className="relative z-10 flex flex-col items-center"><Megaphone className="mb-2 w-8 h-8 opacity-80"/><span className="text-lg font-bold">查看新案消息</span><span className="text-xs text-slate-400 group-hover:text-green-100 mt-1">New Projects & Launches</span></div>
              </Link>
           </div>
-
         </div>
       </section>
 
