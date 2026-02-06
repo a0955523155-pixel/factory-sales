@@ -11,13 +11,23 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
     fbLink: "", igLink: "", lineLink: "",
     iconFB: "", iconIG: "", iconLINE: ""
   });
+  
+  // 新增：排班表狀態
+  const [schedule, setSchedule] = useState({});
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
+        // 抓取全域設定
         const docSnap = await getDoc(doc(db, "settings", "global"));
         if (docSnap.exists()) setSettings(prev => ({...prev, ...docSnap.data()}));
-      } catch(e) {}
+        
+        // 抓取排班表 (新增邏輯)
+        const scheduleSnap = await getDoc(doc(db, "settings", "schedule"));
+        if (scheduleSnap.exists()) setSchedule(scheduleSnap.data());
+      } catch(e) {
+        console.error("Failed to load settings", e);
+      }
     };
     fetchSettings();
   }, []);
@@ -26,25 +36,39 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.name || !form.phone) return alert("請填寫姓名與電話");
+
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "customers"), { ...form, createdAt: new Date() });
+      // 1. 自動指派邏輯：取得今天日期 (YYYY-MM-DD)
+      // 注意：這裡使用本地時間，若客戶在國外可能會有時差問題，建議後端處理更佳，但前端處理亦可接受
+      const today = new Date();
+      const dateString = today.toLocaleDateString('en-CA'); // 格式: YYYY-MM-DD
+      const assignee = schedule[dateString] || "未指派"; // 查表，若無則標記未指派
+
+      // 2. 寫入資料庫 (包含 assignedTo)
+      await addDoc(collection(db, "customers"), { 
+        ...form, 
+        createdAt: new Date(),
+        assignedTo: assignee // 自動寫入負責人
+      });
+
       alert(`感謝 ${form.name}！您的需求已送出，專人將盡快與您聯繫。`);
       setForm({ name: '', industry: '', needs: '', ping: '', phone: '' });
     } catch (error) {
+      console.error(error);
       alert("傳送失敗，請稍後再試或直接來電。");
     }
     setIsSubmitting(false);
   };
 
   const renderIcon = (imgUrl, DefaultIcon, colorClass) => {
-    if (imgUrl) return <img src={imgUrl} className="w-10 h-10 rounded-full object-cover border-2 border-white/20 hover:scale-110 transition" />;
+    if (imgUrl) return <img src={imgUrl} className="w-10 h-10 rounded-full object-cover border-2 border-white/20 hover:scale-110 transition" alt="icon" />;
     return <div className={`p-3 rounded-full bg-white/10 hover:bg-white/20 transition ${colorClass}`}><DefaultIcon size={20} /></div>;
   };
 
   const bgClass = dark ? "bg-slate-900 text-white" : "bg-slate-50 text-slate-900";
-  const inputClass = dark ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400";
-
+  
   return (
     <section className={`py-24 ${bgClass} relative overflow-hidden`} id="contact-section">
       {dark && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>}
@@ -86,13 +110,13 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
            </h3>
            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <input required name="name" value={form.name} onChange={handleChange} placeholder="您的姓名 *" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 ${dark ? 'bg-slate-50 border-slate-200' : 'bg-slate-50 border-slate-200'}`} />
-                <input name="phone" value={form.phone} onChange={handleChange} placeholder="聯絡電話 *" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 ${dark ? 'bg-slate-50 border-slate-200' : 'bg-slate-50 border-slate-200'}`} />
+                <input required name="name" value={form.name} onChange={handleChange} placeholder="您的姓名 *" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 bg-slate-50 border-slate-200`} />
+                <input required name="phone" value={form.phone} onChange={handleChange} placeholder="聯絡電話 *" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 bg-slate-50 border-slate-200`} />
               </div>
-              <input name="industry" value={form.industry} onChange={handleChange} placeholder="所屬行業" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 ${dark ? 'bg-slate-50 border-slate-200' : 'bg-slate-50 border-slate-200'}`} />
+              <input name="industry" value={form.industry} onChange={handleChange} placeholder="所屬行業" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 bg-slate-50 border-slate-200`} />
               <div className="grid grid-cols-2 gap-4">
-                <input name="ping" value={form.ping} onChange={handleChange} placeholder="需求坪數" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 ${dark ? 'bg-slate-50 border-slate-200' : 'bg-slate-50 border-slate-200'}`} />
-                <select name="needs" value={form.needs} onChange={handleChange} className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 ${dark ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                <input name="ping" value={form.ping} onChange={handleChange} placeholder="需求坪數" className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 bg-slate-50 border-slate-200`} />
+                <select name="needs" value={form.needs} onChange={handleChange} className={`w-full p-4 rounded-xl border focus:outline-none focus:border-orange-500 bg-slate-50 border-slate-200 text-slate-500`}>
                   <option value="">需求類型</option>
                   <option value="購地自建">購地自建</option>
                   <option value="購買廠房">購買廠房</option>
@@ -100,8 +124,8 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
                   <option value="投資">投資</option>
                 </select>
               </div>
-              <button type="submit" disabled={isSubmitting} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-orange-600 transition shadow-lg mt-2">
-                {isSubmitting ? "傳送中..." : "送出諮詢"}
+              <button type="submit" disabled={isSubmitting} className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-orange-600 transition shadow-lg mt-2 flex items-center justify-center gap-2">
+                {isSubmitting ? "傳送中..." : <><Send size={18}/> 送出諮詢</>}
               </button>
            </form>
         </div>

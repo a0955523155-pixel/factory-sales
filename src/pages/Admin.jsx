@@ -5,8 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { 
   X, Plus, Trash2, Layout, Users, Settings, Map as MapIcon, Upload, Languages, FileText, Sparkles, 
   LogIn, LogOut, GripVertical, ChevronUp, ChevronDown, RefreshCcw, Copy, Zap, FolderOpen, Folder, 
-  Star, Award, History, Search, Train, Factory, MapPin, Globe, Image as ImageIcon, MessageSquare, Building, GraduationCap
+  Star, Award, History, Search, Train, Factory, MapPin, Globe, Image as ImageIcon, MessageSquare, Building, Calendar as CalendarIcon, UserCheck, ChevronLeft, ChevronRight, Wand2
 } from 'lucide-react';
+
+const TEAM_MEMBERS = ["余珮婷", "侯彥旭", "李晙揚", "蘇昱誠"];
 
 const safeStr = (val) => (val === undefined || val === null) ? "" : String(val);
 
@@ -22,87 +24,43 @@ const compressImage = (file) => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const maxWidth = 1200; 
+        const maxWidth = 1000; // 優化：限制最大寬度
         if (width > maxWidth) { height = (height * maxWidth) / width; width = maxWidth; }
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        const fontSize = width * 0.025;
+        const fontSize = width * 0.03;
         ctx.font = `bold ${fontSize}px Arial`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.textAlign = 'right';
-        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
-        ctx.shadowBlur = 4;
-        ctx.fillText(watermarkText, width - 20, height - 20);
-        resolve(canvas.toDataURL('image/jpeg', 0.8));
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        ctx.shadowBlur = 2;
+        ctx.fillText(watermarkText, width - 15, height - 15);
+        resolve(canvas.toDataURL('image/webp', 0.7)); // 優化：使用 WebP
       };
     };
   });
 };
 
-// --- AI 核心邏輯 (針對三種文章屬性優化) ---
+// --- AI 核心邏輯 ---
 const AI_ENGINE = {
   pick: (arr) => arr[Math.floor(Math.random() * arr.length)],
-  
   generateTitles: (baseTopic, category) => {
-    if (category === 'academy') {
-      return [
-        `【房產小學堂】${baseTopic} 是什麼？3分鐘快速搞懂`,
-        `買房必看！${baseTopic} 注意事項懶人包`,
-        `新手誤區！關於 ${baseTopic}，你可能想錯了`,
-        `【專家解惑】${baseTopic} 常見問題 Q&A`,
-        `政策解讀：${baseTopic} 對購屋族的影響`
-      ];
-    }
-    if (category === 'news_project') {
-      return [
-        `【熱銷捷報】${baseTopic} 詢問度破表，最後席次倒數`,
-        `${baseTopic} 為什麼這麼紅？3大優勢一次看`,
-        `震撼登場！${baseTopic} 打造區域新地標`,
-        `錯過不再！${baseTopic} 擁抱增值第一排`,
-        `【賞屋直擊】${baseTopic} 實地走訪，細節大公開`
-      ];
-    }
-    // 預設：地方新聞
-    return [
-      `【區域利多】${baseTopic} 建設啟動，房市看漲`,
-      `交通大躍進！${baseTopic} 將帶動周邊發展`,
-      `產業進駐！${baseTopic} 成為南台灣新亮點`,
-      `未來展望：${baseTopic} 將如何改變城市風貌？`,
-      `【市場快訊】${baseTopic} 拍板定案，在地人超期待`
-    ];
+    if (category === 'academy') return [`【房產小學堂】${baseTopic} 是什麼？`, `買房必看！${baseTopic} 注意事項`, `新手誤區！關於 ${baseTopic}，你可能想錯了`, `【專家解惑】${baseTopic} 常見問題`, `政策解讀：${baseTopic} 對購屋族的影響`];
+    if (category === 'news_project') return [`【熱銷捷報】${baseTopic} 詢問度破表`, `${baseTopic} 為什麼這麼紅？3大優勢`, `震撼登場！${baseTopic} 打造區域新地標`, `錯過不再！${baseTopic} 擁抱增值第一排`, `【賞屋直擊】${baseTopic} 實地走訪`];
+    return [`【區域利多】${baseTopic} 建設啟動`, `交通大躍進！${baseTopic} 將帶動周邊發展`, `產業進駐！${baseTopic} 成為南台灣新亮點`, `未來展望：${baseTopic} 將如何改變城市風貌？`, `【市場快訊】${baseTopic} 拍板定案`];
   },
-
   generateContent: (title, category) => {
-    if (category === 'academy') {
-      return `Q：關於「${title}」，很多客戶常問到的重點是什麼？\n\nA：這是一個非常好的問題。在目前的房地產市場中，${title} 確實是大家關注的焦點。\n\n【重點一：核心觀念】\n首先，我們要理解它的基本定義... (請在此補充 Gemeni 查到的法規定義)\n\n【重點二：實務影響】\n對於自住客或投資者來說，這意味著... (請補充實際影響)\n\n【專家建議】\n我們建議您在決策前，務必諮詢專業人士，或直接聯繫綠芽團隊，我們將為您做更詳細的試算與規劃。\n\n#房地產知識 #綠芽教學 #${title}`;
-    }
-    if (category === 'news_project') {
-      return `【${title}】\n\n南台灣置產首選，眾所矚目的焦點個案！\n\n🌟 核心地段：位於交通樞紐，南來北往無往不利。\n🌟 強大機能：商圈環繞，食衣住行育樂一次滿足。\n🌟 增值潛力：受惠於產業園區效應，未來發展不可限量。\n\n根據現場銷售回報，近期預約組數持續創新高。好的物件不等人，現在就是進場的最佳時機。\n\n📞 預約專線：0800-666-738\n💬 立即私訊了解更多優惠方案！`;
-    }
-    // 地方新聞
-    return `【${title}】\n\n隨著政府積極推動大南方計畫，${title} 近期傳出重大進展，為區域房市注入一劑強心針。\n\n根據最新消息指出，該項建設預計將大幅改善周邊交通/產業環境，並帶動大量就業人口移入。專家分析，隨著基礎建設陸續到位，周邊房價將具備強勁的支撐力道。\n\n對於正在尋找潛力標的的朋友來說，現在關注此區域正是時候。綠芽團隊將持續為您追蹤最新動態。\n\n(資料來源：整理自近期新聞報導)`;
+    if (category === 'academy') return `Q：關於「${title}」，很多客戶常問到的重點是什麼？\n\nA：這是一個非常好的問題。在目前的房地產市場中，${title} 確實是大家關注的焦點。\n\n【重點一：核心觀念】\n首先，我們要理解它的基本定義...\n\n【專家建議】\n我們建議您在決策前，務必諮詢專業人士。\n\n#房地產知識 #綠芽教學 #${title}`;
+    if (category === 'news_project') return `【${title}】\n\n南台灣置產首選，眾所矚目的焦點個案！\n\n🌟 核心地段：位於交通樞紐，南來北往無往不利。\n🌟 強大機能：商圈環繞，食衣住行育樂一次滿足。\n🌟 增值潛力：受惠於產業園區效應，未來發展不可限量。\n\n📞 預約專線：0800-666-738`;
+    return `【${title}】\n\n隨著政府積極推動大南方計畫，${title} 近期傳出重大進展，為區域房市注入一劑強心針。\n\n根據最新消息指出，該項建設預計將大幅改善周邊交通/產業環境，並帶動大量就業人口移入。專家分析，隨著基礎建設陸續到位，周邊房價將具備強勁的支撐力道。`;
   },
-
   generateImagePrompt: (title, category) => {
     let subject = "";
-    let style = "高畫質，4k解析度，專業攝影，電影光影，細節豐富";
-
-    if (category === 'academy') {
-      subject = "現代化的辦公室場景，桌上有文件、計算機、眼鏡，背景有模糊的房地產數據圖表，專業、知性、學習氛圍，明亮的光線";
-    } else if (category === 'news_project') {
-      if (title.includes("廠房") || title.includes("工業")) {
-        subject = "現代化科技廠房外觀，玻璃帷幕，藍天白雲，綠意造景，充滿未來感，建築攝影角度";
-      } else {
-        subject = "豪華現代住宅大樓外觀，黃金時段的陽光灑落，周邊有綠樹，街道乾淨，高品質建築渲染圖";
-      }
-    } else {
-      // 地方新聞
-      if (title.includes("捷運") || title.includes("交通")) subject = "繁忙的現代化城市交通樞紐，高架橋，捷運列車經過，城市天際線，充滿活力的都市氛圍";
-      else if (title.includes("動土") || title.includes("建設")) subject = "大型公共建設工程現場，工程起重機，藍天，象徵發展與建設的意象";
-      else subject = "繁榮的南台灣城市景觀，空拍視角，包含綠地與建築，陽光普照";
-    }
-
+    let style = "高畫質，4k解析度，專業攝影，電影光影";
+    if (category === 'academy') subject = "現代化的辦公室場景，桌上有文件、計算機、眼鏡，背景有模糊的房地產數據圖表，專業、知性";
+    else if (category === 'news_project') subject = title.includes("廠房") ? "現代化科技廠房外觀，玻璃帷幕，藍天白雲" : "豪華現代住宅大樓外觀，黃金時段的陽光灑落";
+    else subject = title.includes("捷運") ? "繁忙的現代化城市交通樞紐，捷運列車" : "大型公共建設工程現場，工程起重機，藍天";
     return `${subject}，${style}`;
   }
 };
@@ -120,32 +78,26 @@ const Admin = () => {
   const [translating, setTranslating] = useState(false);
   const [editId, setEditId] = useState(null);
   
-  // Drag Items
-  const dragItem = useRef(); 
-  const dragOverItem = useRef();
+  // Drag refs
+  const dragItem = useRef(); const dragOverItem = useRef();
 
-  // About Page Data (獨立)
+  // About Data
   const [aboutData, setAboutData] = useState({
-    title: "綠芽團隊",
-    subtitle: "深耕南台灣，專注工業地產",
-    content: "我們是一群對土地充滿熱情的專業團隊...",
-    image: "",
-    stats: [
-      { label: "在地深耕(年)", value: "10+" },
-      { label: "成交件數", value: "500+" },
-      { label: "服務客戶", value: "1000+" }
-    ]
+    title: "綠芽團隊", subtitle: "深耕南台灣，專注工業地產", content: "我們是一群對土地充滿熱情的專業團隊...", image: "",
+    stats: [{ label: "在地深耕(年)", value: "10+" }, { label: "成交件數", value: "500+" }, { label: "服務客戶", value: "1000+" }]
   });
+
+  // Schedule Data
+  const [scheduleData, setScheduleData] = useState({});
+  const [currentMonth, setCurrentMonth] = useState(new Date()); 
+  const [autoBatch, setAutoBatch] = useState({ startDate: '', days: 30, startMemberIndex: 0 });
 
   // Property Data
   const [formData, setFormData] = useState({ 
-    title: '', titleEN: '', subtitle: '', description: '',
-    price: '', address: '', 
+    title: '', titleEN: '', subtitle: '', description: '', price: '', address: '', 
     city: '高雄', propertyType: '工業地', usageType: '廠房', transactionType: '出售',
-    agentPhone: '', agentName: '', lineId: '', lineQr: '', 
-    googleMapUrl: '', thumb: '', images: [],
-    showOnHome: false,
-    isFeaturedWork: false
+    agentPhone: '', agentName: '', lineId: '', lineQr: '', googleMapUrl: '', thumb: '', images: [],
+    showOnHome: false, isFeaturedWork: false
   });
   
   const [specs, setSpecs] = useState([{ id: 's1', label: "使用分區", value: "乙種工業區" }]);
@@ -156,20 +108,16 @@ const Admin = () => {
   const [batchUnitPrice, setBatchUnitPrice] = useState('');
   const [collapsedZones, setCollapsedZones] = useState({});
 
-  // Article Data (只包含新聞和QA)
+  // Article Data
   const [articleForm, setArticleForm] = useState({ category: 'news_local', title: '', content: '', date: '', image: '' });
   const [editArticleId, setEditArticleId] = useState(null);
-  
-  // AI 輔助狀態
   const [aiTitleSuggestions, setAiTitleSuggestions] = useState([]);
   const [aiImagePrompt, setAiImagePrompt] = useState('');
 
   const [globalSettings, setGlobalSettings] = useState({ siteName: "Factory Pro", heroTitleCN: "未來工廠", heroTitleEN: "FUTURE FACTORY", contactPhone: "0800-666-738", fbLink: "", igLink: "", lineLink: "", iconFB: "", iconIG: "", iconLINE: "" });
 
   const historyData = useMemo(() => {
-    const specLabels = new Set();
-    const featureTitles = new Set();
-    const progressStatuses = new Set();
+    const specLabels = new Set(); const featureTitles = new Set(); const progressStatuses = new Set();
     properties.forEach(p => {
       p.specs?.forEach(s => { if(s.label) specLabels.add(s.label); });
       p.features?.forEach(f => { if(f.title) featureTitles.add(f.title); });
@@ -179,7 +127,8 @@ const Admin = () => {
   }, [properties]);
 
   useEffect(() => { const storedAuth = localStorage.getItem('isAuth'); if (storedAuth === 'true') { setIsAuth(true); fetchAll(); } }, []);
-  const fetchAll = () => { fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles(); fetchAbout(); };
+  const fetchAll = () => { fetchProperties(); fetchGlobalSettings(); fetchCustomers(); fetchArticles(); fetchAbout(); fetchSchedule(); };
+  
   const handleLogin = (e) => { e.preventDefault(); if (loginForm.user === 'gst0800666738' && loginForm.pass === '0800666738') { setIsAuth(true); localStorage.setItem('isAuth', 'true'); fetchAll(); } else { alert("帳號或密碼錯誤"); } };
   const handleLogout = () => { if (window.confirm("登出？")) { setIsAuth(false); localStorage.removeItem('isAuth'); navigate('/'); } };
 
@@ -188,7 +137,54 @@ const Admin = () => {
   const fetchGlobalSettings = async () => { try { const docSnap = await getDoc(doc(db, "settings", "global")); if (docSnap.exists()) setGlobalSettings(docSnap.data()); } catch (e) {} };
   const fetchCustomers = async () => { try { const snap = await getDocs(collection(db, "customers")); const list = []; snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() })); list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); setCustomers(list); } catch (e) {} };
   const fetchAbout = async () => { try { const docSnap = await getDoc(doc(db, "settings", "about")); if (docSnap.exists()) setAboutData(docSnap.data()); } catch (e) {} };
+  const fetchSchedule = async () => { try { const docSnap = await getDoc(doc(db, "settings", "schedule")); if (docSnap.exists()) setScheduleData(docSnap.data()); } catch (e) {} };
 
+  // --- Schedule ---
+  const handleBatchSchedule = async () => {
+    if (!autoBatch.startDate) return alert("請選擇開始日期");
+    if (autoBatch.days <= 0) return alert("天數必須大於 0");
+    const newSchedule = { ...scheduleData };
+    let currentDate = new Date(autoBatch.startDate);
+    let memberIndex = parseInt(autoBatch.startMemberIndex);
+    for (let i = 0; i < autoBatch.days; i++) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        newSchedule[dateStr] = TEAM_MEMBERS[memberIndex % TEAM_MEMBERS.length];
+        currentDate.setDate(currentDate.getDate() + 1);
+        memberIndex++;
+    }
+    setScheduleData(newSchedule);
+    await setDoc(doc(db, "settings", "schedule"), newSchedule);
+    alert(`已自動排班 ${autoBatch.days} 天！`);
+  };
+  const handleDayChange = async (dateStr, member) => {
+    const newSchedule = { ...scheduleData, [dateStr]: member };
+    setScheduleData(newSchedule);
+    await setDoc(doc(db, "settings", "schedule"), newSchedule);
+  };
+  const changeMonth = (offset) => { const newDate = new Date(currentMonth); newDate.setMonth(newDate.getMonth() + offset); setCurrentMonth(newDate); };
+  const generateCalendarDays = () => {
+    const year = currentMonth.getFullYear(); const month = currentMonth.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1); const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startDay = firstDayOfMonth.getDay();
+    const days = [];
+    for (let i = 0; i < startDay; i++) { days.push(null); }
+    for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(year, month, i);
+        // Fix timezone issue by formatting manually
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const localDateStr = `${y}-${m}-${d}`;
+        days.push({ day: i, dateStr: localDateStr, member: scheduleData[localDateStr] || '' });
+    }
+    return days;
+  };
+
+  // --- Customer ---
+  const handleAssignCustomer = async (customerId, member) => { if(!window.confirm(`確定指派給 ${member} 嗎？`)) return; await updateDoc(doc(db, "customers", customerId), { assignedTo: member }); fetchCustomers(); };
+  const handleDeleteCustomer = async (customerId) => { if(!window.confirm("確定刪除此客戶資料？")) return; await deleteDoc(doc(db, "customers", customerId)); fetchCustomers(); };
+
+  // --- General ---
   const loadEdit = (item) => {
     setEditId(item.id); const info = item.basicInfo || {};
     setFormData({
@@ -201,14 +197,10 @@ const Admin = () => {
     setEnvList(item.environmentList || []); setProgressList(item.progressHistory || []); setUnits(item.units || []);
   };
 
-  const loadEditArticle = (item) => { 
-    setEditArticleId(item.id); 
-    setArticleForm({ ...item }); 
-    setAiTitleSuggestions([]); 
-    setAiImagePrompt(''); 
-  };
+  const loadEditArticle = (item) => { setEditArticleId(item.id); setArticleForm({ ...item }); setAiTitleSuggestions([]); setAiImagePrompt(''); };
   const handleUpload = async (e, callback) => { const file = e.target.files[0]; if (!file) return; setCompressing(true); try { const compressed = await compressImage(file); callback(compressed); } catch (e) {} setCompressing(false); };
 
+  // --- 重點修復：resetForm 函式定義 ---
   const resetForm = () => {
     setEditId(null);
     setFormData({ title: '', titleEN: '', subtitle: '', description: '', price: '', address: '', city: '高雄', propertyType: '工業地', usageType: '廠房', transactionType: '出售', agentPhone: '', agentName: '', lineId: '', lineQr: '', googleMapUrl: '', thumb: '', images: [], showOnHome: false, isFeaturedWork: false });
@@ -227,18 +219,13 @@ const Admin = () => {
   const handleDeleteProperty = async (e, id) => { e.stopPropagation(); if (!window.confirm("刪除？")) return; await deleteDoc(doc(db, "properties", id)); fetchProperties(); };
   const handleDeleteArticle = async (id) => { if (!window.confirm("刪除？")) return; await deleteDoc(doc(db, "articles", id)); fetchArticles(); };
   
-  // AI Functions
   const handleGenerateTitles = () => { setAiTitleSuggestions(AI_ENGINE.generateTitles(articleForm.title || "房地產", articleForm.category)); };
   const handleGenerateContent = () => { if (!articleForm.title) return alert("請先輸入標題"); setArticleForm(prev => ({ ...prev, content: AI_ENGINE.generateContent(articleForm.title, articleForm.category) })); };
   const handleGenerateImagePrompt = () => { if (!articleForm.title) return alert("請先輸入標題"); setAiImagePrompt(AI_ENGINE.generateImagePrompt(articleForm.title, articleForm.category)); };
   
-  // 智慧素材搜尋 (分類優化)
   const handleArticleMaterialSearch = () => {
     const title = articleForm.title || "房地產";
-    let query = "";
-    if (articleForm.category === 'academy') query = `${title} 法規 懶人包 稅制 解釋函令`;
-    else if (articleForm.category === 'news_project') query = `${title} 接待中心 示意圖 房價`;
-    else query = `${title} 建設 完工示意圖 重劃區`;
+    let query = articleForm.category === 'academy' ? `${title} 法規 懶人包 稅制 解釋函令` : articleForm.category === 'news_project' ? `${title} 接待中心 示意圖 房價` : `${title} 建設 完工示意圖 重劃區`;
     window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
     window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
   };
@@ -250,7 +237,6 @@ const Admin = () => {
   };
   const handleSmartNewsGenerate = () => { setEnvList([...envList, { id: Date.now(), title: `${formData.city}利多`, desc: "AI 生成中...", image: "", link: "" }]); };
 
-  // Unit helpers
   const calculateTotalPrice = (ping, unitPrice) => { const p = parseFloat(ping); const u = parseFloat(unitPrice); return (!isNaN(p) && !isNaN(u)) ? `${(p * u).toFixed(0)} 萬` : ''; };
   const handleUnitChange = (id, field, value) => { setUnits(prev => prev.map(u => { if (u.id !== id) return u; const newUnit = { ...u, [field]: value }; if (field === 'ping' || field === 'unitPrice') { newUnit.price = calculateTotalPrice(newUnit.ping, newUnit.unitPrice); } return newUnit; })); };
   const handleDuplicateUnit = (unit) => { setUnits([{ ...unit, id: Date.now(), number: `${unit.number} (複製)`, layout: '' }, ...units]); };
@@ -259,7 +245,6 @@ const Admin = () => {
   const groupedUnits = useMemo(() => { const groups = {}; units.forEach(u => { const zone = u.number ? u.number.charAt(0).toUpperCase() : '未分類'; const zoneKey = /^[A-Z]$/.test(zone) ? zone : '其他'; if (!groups[zoneKey]) groups[zoneKey] = []; groups[zoneKey].push(u); }); return Object.keys(groups).sort().reduce((obj, key) => { obj[key] = groups[key]; return obj; }, {}); }, [units]);
   const toggleZone = (zone) => { setCollapsedZones(prev => ({ ...prev, [zone]: !prev[zone] })); };
   
-  // Drag and drop handlers
   const moveArticle = async (index, direction) => { const newItems = [...articles]; if (direction === 'up' && index > 0) { [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]]; } else if (direction === 'down' && index < newItems.length - 1) { [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]; } else { return; } setArticles(newItems); saveOrder(newItems); };
   const saveOrder = async (items) => { try { const batch = writeBatch(db); items.forEach((item, index) => { const ref = doc(db, "articles", item.id); batch.update(ref, { order: index }); }); await batch.commit(); } catch (e) {} };
   const resetOrderToDate = async () => { if (!window.confirm("重排？")) return; const sorted = [...articles].sort((a, b) => new Date(b.date) - new Date(a.date)); setArticles(sorted); saveOrder(sorted); };
@@ -279,11 +264,12 @@ const Admin = () => {
       <div className="w-full lg:w-64 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col shrink-0">
         <div className="p-4 md:p-5 flex justify-between items-center lg:block"><h2 className="font-black text-xl text-slate-900 tracking-tight">綠芽管理員</h2><button onClick={handleLogout} className="lg:hidden text-slate-400 hover:text-red-500"><LogOut size={20}/></button></div>
         <div className="flex lg:flex-col gap-2 p-2 overflow-x-auto lg:overflow-visible scrollbar-hide">
-            <button onClick={() => setViewMode('properties')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'properties' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Layout size={18}/> 案場管理</button>
-            <button onClick={() => setViewMode('articles')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'articles' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><FileText size={18}/> 文章管理</button>
-            <button onClick={() => setViewMode('customers')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'customers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Users size={18}/> 客戶資料</button>
-            <button onClick={() => setViewMode('about')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'about' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Building size={18}/> 關於頁面</button>
-            <button onClick={() => setViewMode('settings')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'settings' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Settings size={18}/> 網站設定</button>
+            <button onClick={() => setViewMode('properties')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'properties' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Layout size={18}/> 案場</button>
+            <button onClick={() => setViewMode('articles')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'articles' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><FileText size={18}/> 文章</button>
+            <button onClick={() => setViewMode('customers')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'customers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Users size={18}/> 客戶</button>
+            <button onClick={() => setViewMode('schedule')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'schedule' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><CalendarIcon size={18}/> 排班</button>
+            <button onClick={() => setViewMode('about')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'about' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Building size={18}/> 關於</button>
+            <button onClick={() => setViewMode('settings')} className={`flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition whitespace-nowrap ${viewMode === 'settings' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50'}`}><Settings size={18}/> 設定</button>
         </div>
         <div className="mt-auto p-4 hidden lg:block border-t border-slate-100"><button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-sm font-bold transition w-full px-4 py-2 hover:bg-red-50 rounded-xl"><LogOut size={18}/> 登出系統</button></div>
         
@@ -292,7 +278,86 @@ const Admin = () => {
 
       <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
         
-        {/* --- 關於我們編輯器 --- */}
+        {/* --- 排班管理 (月曆 + 批量) --- */}
+        {viewMode === 'schedule' && (
+            <div className="p-6 md:p-10 max-w-5xl mx-auto w-full overflow-y-auto">
+               <h1 className="text-2xl md:text-3xl font-black mb-8">排班管理系統</h1>
+               
+               {/* 批量工具區 */}
+               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-slate-800"><Wand2 size={20} className="text-purple-600"/> 一鍵智慧排班</h3>
+                  <div className="flex flex-wrap items-end gap-4">
+                     <div><label className={labelStyle}>開始日期</label><input type="date" value={autoBatch.startDate} onChange={e=>setAutoBatch({...autoBatch, startDate: e.target.value})} className={inputStyle} /></div>
+                     <div><label className={labelStyle}>排班天數</label><input type="number" value={autoBatch.days} onChange={e=>setAutoBatch({...autoBatch, days: parseInt(e.target.value)})} className={inputStyle} /></div>
+                     <div><label className={labelStyle}>起始人員</label><select value={autoBatch.startMemberIndex} onChange={e=>setAutoBatch({...autoBatch, startMemberIndex: e.target.value})} className={inputStyle}>{TEAM_MEMBERS.map((m, i)=><option key={m} value={i}>{m}</option>)}</select></div>
+                     <button onClick={handleBatchSchedule} className="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 whitespace-nowrap shadow-md">生成班表</button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">* 系統將依序自動輪排：{TEAM_MEMBERS.join(" → ")}</p>
+               </div>
+
+               {/* 月曆檢視區 */}
+               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="flex justify-between items-center p-4 bg-slate-50 border-b border-slate-200">
+                     <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-white rounded-full transition"><ChevronLeft/></button>
+                     <h2 className="text-xl font-black text-slate-800">{currentMonth.getFullYear()} 年 {currentMonth.getMonth() + 1} 月</h2>
+                     <button onClick={() => changeMonth(1)} className="p-2 hover:bg-white rounded-full transition"><ChevronRight/></button>
+                  </div>
+                  <div className="grid grid-cols-7 text-center bg-slate-100 text-xs font-bold text-slate-500 py-2">
+                     <div>週日</div><div>週一</div><div>週二</div><div>週三</div><div>週四</div><div>週五</div><div>週六</div>
+                  </div>
+                  <div className="grid grid-cols-7 border-b border-slate-100">
+                     {generateCalendarDays().map((d, i) => (
+                        <div key={i} className={`min-h-[100px] border-r border-b border-slate-100 p-2 relative group ${!d ? 'bg-slate-50/50' : 'bg-white hover:bg-orange-50/30'}`}>
+                           {d && (
+                              <>
+                                 <span className={`text-sm font-bold ${new Date().toISOString().split('T')[0] === d.dateStr ? 'bg-orange-600 text-white px-2 py-0.5 rounded-full' : 'text-slate-400'}`}>{d.day}</span>
+                                 <div className="mt-2">
+                                    <select 
+                                       value={d.member || ""} 
+                                       onChange={(e) => handleDayChange(d.dateStr, e.target.value)} 
+                                       className={`w-full text-center font-bold bg-transparent cursor-pointer outline-none appearance-none p-1 rounded hover:bg-white/50 ${d.member ? 'text-slate-800' : 'text-slate-300'}`}
+                                    >
+                                       <option value="">(空)</option>
+                                       {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                    {!d.member && <div className="text-[10px] text-red-300 text-center mt-1">未排班</div>}
+                                 </div>
+                              </>
+                           )}
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+        )}
+
+        {/* --- 客戶管理 --- */}
+        {viewMode === 'customers' && (
+            <div className="p-6 md:p-10 w-full max-w-7xl mx-auto overflow-y-auto">
+               <h1 className="text-2xl md:text-3xl font-black mb-8">客戶諮詢資料表</h1>
+               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto">
+                  <table className="w-full text-sm text-left min-w-[800px]">
+                     <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="p-5">日期</th><th className="p-5">姓名</th><th className="p-5">電話</th><th className="p-5">需求</th><th className="p-5">負責人員</th><th className="p-5 text-right">操作</th></tr></thead>
+                     <tbody>{customers.map(c => (
+                        <tr key={c.id} className="border-b border-slate-100 hover:bg-orange-50/50 transition">
+                           <td className="p-5 font-mono text-slate-400">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</td>
+                           <td className="p-5 font-bold text-slate-800">{c.name}</td>
+                           <td className="p-5 text-orange-600 font-bold">{c.phone}</td>
+                           <td className="p-5"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{c.needs}</span></td>
+                           <td className="p-5">
+                              <select value={c.assignedTo || '未指派'} onChange={(e)=>handleAssignCustomer(c.id, e.target.value)} className={`bg-transparent font-bold cursor-pointer outline-none ${c.assignedTo ? 'text-blue-600' : 'text-slate-400'}`}>
+                                 <option value="未指派">未指派</option>
+                                 {TEAM_MEMBERS.map(m=><option key={m} value={m}>{m}</option>)}
+                              </select>
+                           </td>
+                           <td className="p-5 text-right"><button onClick={()=>handleDeleteCustomer(c.id)} className="text-slate-300 hover:text-red-500 p-2"><Trash2 size={16}/></button></td>
+                        </tr>
+                     ))}</tbody>
+                  </table>
+               </div>
+            </div>
+        )}
+
         {viewMode === 'about' && (
             <div className="p-6 md:p-10 max-w-4xl mx-auto w-full overflow-y-auto">
                 <h1 className="text-2xl md:text-3xl font-black mb-8">關於我們頁面設定</h1>
@@ -324,7 +389,6 @@ const Admin = () => {
         )}
 
         {viewMode === 'settings' && (<div className="p-6 md:p-10 max-w-3xl mx-auto w-full overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">網站全域設定</h1><div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6"><div><label className={labelStyle}>左上角網站名稱</label><input value={globalSettings.siteName} onChange={e=>setGlobalSettings({...globalSettings, siteName: e.target.value})} className={inputStyle} /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>首頁大標題 (中文)</label><input value={globalSettings.heroTitleCN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleCN: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>首頁大標題 (英文)</label><input value={globalSettings.heroTitleEN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleEN: e.target.value})} className={inputStyle} /></div></div><div><label className={labelStyle}>全站聯絡電話</label><input value={globalSettings.contactPhone} onChange={e=>setGlobalSettings({...globalSettings, contactPhone: e.target.value})} className={inputStyle} /></div><h3 className="font-black border-l-4 border-orange-500 pl-2 mt-4">社群連結</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className={labelStyle}>FB 連結</label><input value={globalSettings.fbLink} onChange={e=>setGlobalSettings({...globalSettings, fbLink: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>FB 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconFB: url}))} className="text-xs"/>{globalSettings.iconFB && <img src={globalSettings.iconFB} className="h-8 w-8 rounded-full border"/>}</div><div><label className={labelStyle}>IG 連結</label><input value={globalSettings.igLink} onChange={e=>setGlobalSettings({...globalSettings, igLink: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>IG 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconIG: url}))} className="text-xs"/>{globalSettings.iconIG && <img src={globalSettings.iconIG} className="h-8 w-8 rounded-full border"/>}</div><div><label className={labelStyle}>LINE 連結</label><input value={globalSettings.lineLink} onChange={e=>setGlobalSettings({...globalSettings, lineLink: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>LINE 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconLINE: url}))} className="text-xs"/>{globalSettings.iconLINE && <img src={globalSettings.iconLINE} className="h-8 w-8 rounded-full border"/>}</div></div><button onClick={handleSaveSettings} disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-orange-600 transition shadow-lg mt-4">{loading ? "處理中..." : "儲存設定"}</button></div></div>)}
-        {viewMode === 'customers' && (<div className="p-6 md:p-10 w-full max-w-7xl mx-auto overflow-y-auto"><h1 className="text-2xl md:text-3xl font-black mb-8">客戶諮詢資料表</h1><div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto"><table className="w-full text-sm text-left min-w-[600px]"><thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b border-slate-200"><tr><th className="p-5">日期</th><th className="p-5">姓名</th><th className="p-5">電話</th><th className="p-5">行業</th><th className="p-5">需求</th><th className="p-5">坪數</th></tr></thead><tbody>{customers.map(c => (<tr key={c.id} className="border-b border-slate-100 hover:bg-orange-50/50 transition"><td className="p-5 font-mono text-slate-400">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</td><td className="p-5 font-bold text-slate-800">{c.name}</td><td className="p-5 text-orange-600 font-bold">{c.phone}</td><td className="p-5">{c.industry}</td><td className="p-5"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{c.needs}</span></td><td className="p-5">{c.ping}</td></tr>))}</tbody></table></div></div>)}
         
         {viewMode === 'articles' && (
           <div className="flex flex-col md:flex-row h-full">
@@ -358,7 +422,6 @@ const Admin = () => {
                         <div><label className={labelStyle}>發布日期</label><input type="date" value={articleForm.date} onChange={e=>setArticleForm({...articleForm, date: e.target.value})} className={inputStyle}/></div>
                     </div>
                     
-                    {/* AI 標題產生器 */}
                     <div>
                       <label className={labelStyle}>文章標題</label>
                       <div className="flex gap-2">
@@ -375,7 +438,6 @@ const Admin = () => {
                       )}
                     </div>
 
-                    {/* AI 內容生成 & 素材搜尋 */}
                     <div className="relative"> 
                       <div className="flex justify-between items-center mb-1"> 
                         <label className={labelStyle}>文章內容</label> 
@@ -387,7 +449,6 @@ const Admin = () => {
                       <textarea value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} className={`${inputStyle} h-64 leading-relaxed`} placeholder="輸入內容，或點擊 AI 自動撰寫..."/>
                     </div>
 
-                    {/* AI 圖片詠唱 */}
                     <div>
                       <label className={labelStyle}>封面圖片 (自動壓浮水印)</label>
                       <div className="mb-2 flex items-center gap-2">
@@ -444,10 +505,6 @@ const Admin = () => {
                     <div className="flex justify-between mb-6">
                       <h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">規格 & 特色</h3>
                       <div className="flex gap-2">
-                        <div className="relative group">
-                          <button className="text-xs bg-slate-100 px-3 py-1 rounded hover:bg-slate-200 font-bold flex items-center gap-1"><History size={12}/> 參考過往</button>
-                          <select onChange={(e)=>{if(e.target.value) setSpecs([...specs, {id: Date.now(), label: e.target.value, value: ''}])}} className="absolute inset-0 opacity-0 cursor-pointer"><option value="">選擇標籤...</option>{historyData.specs.map(s=><option key={s} value={s}>{s}</option>)}</select>
-                        </div>
                         <button onClick={()=>setSpecs([...specs, {id: Date.now(), label:'', value:''}])} className="text-xs bg-slate-100 px-3 py-1 rounded hover:bg-slate-200 font-bold">+ 增加規格</button>
                         <button onClick={()=>setFeatures([...features, {id: Date.now(), title:'', desc:''}])} className="text-xs bg-slate-100 px-3 py-1 rounded hover:bg-slate-200 font-bold">+ 增加特色</button>
                       </div>
@@ -495,13 +552,7 @@ const Admin = () => {
                   <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex justify-between mb-4">
                       <h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">工程進度</h3>
-                      <div className="flex gap-2">
-                        <div className="relative group">
-                          <button className="text-xs bg-slate-100 px-3 py-1 rounded hover:bg-slate-200 font-bold flex items-center gap-1"><History size={12}/> 參考過往</button>
-                          <select onChange={(e)=>{if(e.target.value) setProgressList([...progressList, {id: Date.now(), date: new Date().toISOString().split('T')[0], status: e.target.value}])}} className="absolute inset-0 opacity-0 cursor-pointer"><option value="">選擇進度...</option>{historyData.progress.map(s=><option key={s} value={s}>{s}</option>)}</select>
-                        </div>
-                        <button onClick={()=>setProgressList([...progressList, {id: Date.now(), date:'', status:''}])} className="text-orange-500 text-xs font-bold">+ 新增</button>
-                      </div>
+                      <button onClick={()=>setProgressList([...progressList, {id: Date.now(), date:'', status:''}])} className="text-orange-500 text-xs font-bold">+ 新增</button>
                     </div>
                     {progressList.map((p, i) => (
                       <div key={i} className="flex gap-2 mb-2">
