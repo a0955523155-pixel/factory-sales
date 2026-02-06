@@ -3,12 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, Flame, Medal, Newspaper, ExternalLink } from 'lucide-react';
+import { MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, Flame, Medal, Newspaper, ExternalLink, Share2, Check } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection'; 
 
-// --- 規格與特色 (保持不變) ---
+// --- 規格與特色 ---
 const SpecsAndFeatures = ({ specs, features, title, description }) => (
   <section className="py-20 px-6 max-w-7xl mx-auto">
     <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden">
@@ -31,7 +31,7 @@ const SpecsAndFeatures = ({ specs, features, title, description }) => (
   </section>
 );
 
-// --- 周遭環境與新聞區塊 (保持不變) ---
+// --- 周遭環境與新聞區塊 ---
 const SurroundingsSection = ({ list }) => {
   if (!list || list.length === 0 || (list.length === 1 && !list[0].title)) return null;
 
@@ -63,7 +63,7 @@ const SurroundingsSection = ({ list }) => {
   );
 };
 
-// --- 智慧型戶別列表 (修改處) ---
+// --- 智慧型戶別列表 ---
 const UnitList = ({ units }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [filterZone, setFilterZone] = useState('All');
@@ -116,7 +116,6 @@ const UnitList = ({ units }) => {
           <div className="flex flex-wrap gap-3 items-center">
              <div className="flex items-center gap-2 text-slate-500 font-bold text-sm"><Filter size={16}/> 區域/狀態：</div>
              <select value={filterZone} onChange={(e)=>setFilterZone(e.target.value)} className="bg-slate-100 border-none rounded-lg px-4 py-2 text-sm font-bold text-slate-700 outline-none hover:bg-slate-200 cursor-pointer">
-                {/* FIX: 將 '所有區域' 改為 '熱銷中' */}
                 <option value="All">熱銷中</option>
                 {zones.filter(z=>z!=='All').map(z => <option key={z} value={z}>{z} 區</option>)}
              </select>
@@ -192,13 +191,25 @@ const UnitList = ({ units }) => {
   );
 };
 
-// --- 下方組件保持不變 ---
 const LocationMap = ({ mapUrl, address }) => { if (!mapUrl) return null; return ( <section className="py-20 px-6 max-w-7xl mx-auto"><div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden"><div className="bg-slate-900 px-8 py-4 flex items-center justify-between"><h3 className="text-white font-bold flex items-center gap-2"><MapPin className="text-orange-500"/> 物件位置</h3><span className="text-slate-400 text-sm font-mono">{address}</span></div><div className="aspect-video w-full"><iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe></div></div></section> ); };
 
 const PropertyDetail = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
-  useEffect(() => { window.scrollTo(0, 0); const fetch = async () => { const docSnap = await getDoc(doc(db, "properties", id)); if (docSnap.exists()) setData(docSnap.data()); }; fetch(); }, [id]);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { 
+    window.scrollTo(0, 0); 
+    const fetch = async () => { const docSnap = await getDoc(doc(db, "properties", id)); if (docSnap.exists()) setData(docSnap.data()); }; 
+    fetch(); 
+  }, [id]);
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (!data) return <div className="h-screen bg-slate-50 flex items-center justify-center font-mono text-2xl">LOADING...</div>;
 
   return (
@@ -209,8 +220,15 @@ const PropertyDetail = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/grid-me.png')] opacity-20 pointer-events-none"></div>
         <div className="relative z-10 h-full flex flex-col justify-end pb-24 px-6 max-w-7xl mx-auto">
-          {/* 連結已修正 */}
-          <Link to="/works" className="absolute top-28 left-6 md:left-auto text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition"><ArrowLeft size={20}/> 回經典作品</Link>
+          {/* 左上角返回按鈕 */}
+          <Link to="/works" className="absolute top-28 left-6 text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition"><ArrowLeft size={20}/> 回經典作品</Link>
+          
+          {/* 右上角分享按鈕 */}
+          <button onClick={handleShare} className={`absolute top-28 right-6 text-white/80 flex items-center gap-2 hover:text-orange-400 px-6 py-3 rounded-full backdrop-blur border font-bold transition ${copied ? 'bg-green-600/80 border-green-500 text-white' : 'bg-white/10 border-white/10'}`}>
+             {copied ? <Check size={20}/> : <Share2 size={20}/>}
+             {copied ? "已複製連結" : "分享案場"}
+          </button>
+
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="md:w-3/4">
             <span className="bg-orange-600 text-white px-4 py-1 text-sm font-bold uppercase tracking-widest rounded-sm mb-6 inline-block shadow-lg shadow-orange-500/50">Premium Industrial Asset</span>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-tight drop-shadow-lg">{data.basicInfo.title}</h1>
