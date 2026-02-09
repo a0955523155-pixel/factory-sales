@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
-import { Send, Phone, MapPin, Facebook, Instagram, MessageCircle, QrCode } from 'lucide-react';
+import { Send, Phone, Facebook, Instagram, MessageCircle } from 'lucide-react';
 
 const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
   const [form, setForm] = useState({ name: '', industry: '', needs: '', ping: '', phone: '' });
@@ -9,22 +9,27 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
   const [settings, setSettings] = useState({
     contactPhone: "0800-666-738",
     fbLink: "", igLink: "", lineLink: "",
-    iconFB: "", iconIG: "", iconLINE: ""
+    iconFB: "", iconIG: "", iconLINE: "",
+    notificationWebhook: "" 
   });
   
-  // 新增：排班表狀態
   const [schedule, setSchedule] = useState({});
+  const [teamIds, setTeamIds] = useState({}); // 儲存 { "余珮婷": "U123..." }
 
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        // 抓取全域設定
         const docSnap = await getDoc(doc(db, "settings", "global"));
         if (docSnap.exists()) setSettings(prev => ({...prev, ...docSnap.data()}));
         
-        // 抓取排班表 (新增邏輯)
         const scheduleSnap = await getDoc(doc(db, "settings", "schedule"));
         if (scheduleSnap.exists()) setSchedule(scheduleSnap.data());
+
+        // ★★★ 抓取團隊 ID 對照表 ★★★
+        const teamSnap = await getDoc(doc(db, "settings", "team"));
+        if (teamSnap.exists() && teamSnap.data().ids) {
+          setTeamIds(teamSnap.data().ids);
+        }
       } catch(e) {
         console.error("Failed to load settings", e);
       }
@@ -40,20 +45,41 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
 
     setIsSubmitting(true);
     try {
-      // 1. 自動指派邏輯：取得今天日期 (YYYY-MM-DD)
-      // 注意：這裡使用本地時間，若客戶在國外可能會有時差問題，建議後端處理更佳，但前端處理亦可接受
+      // 1. 自動指派
       const today = new Date();
-      const dateString = today.toLocaleDateString('en-CA'); // 格式: YYYY-MM-DD
-      const assignee = schedule[dateString] || "未指派"; // 查表，若無則標記未指派
+      const dateString = today.toLocaleDateString('en-CA'); 
+      const assignee = schedule[dateString] || "未指派";
+      
+      // ★★★ 找出該人員的 LINE ID ★★★
+      // 如果找不到該員的 ID，就傳送給預設管理者 (或是空值)
+      const targetLineId = teamIds[assignee] || "";
 
-      // 2. 寫入資料庫 (包含 assignedTo)
+      // 2. 寫入資料庫
       await addDoc(collection(db, "customers"), { 
         ...form, 
         createdAt: new Date(),
-        assignedTo: assignee // 自動寫入負責人
+        assignedTo: assignee
       });
 
-      alert(`感謝 ${form.name}！您的需求已送出，專人將盡快與您聯繫。`);
+      // 3. 觸發通知 Webhook
+      if (settings.notificationWebhook) {
+        try {
+          await fetch(settings.notificationWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...form,
+              assignedTo: assignee,
+              lineUserId: targetLineId, // 傳送 ID 給 Make
+              date: dateString
+            })
+          });
+        } catch (webhookError) {
+          console.error("Webhook trigger failed", webhookError);
+        }
+      }
+
+      alert(`感謝 ${form.name}！您的需求已送出，將由專員 ${assignee} 盡快與您聯繫。`);
       setForm({ name: '', industry: '', needs: '', ping: '', phone: '' });
     } catch (error) {
       console.error(error);
@@ -75,7 +101,6 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
       
       <div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
         
-        {/* 左側：資訊與社群 */}
         <div>
           <span className="text-orange-500 font-mono font-bold uppercase tracking-widest mb-2 block">Contact Us</span>
           <h2 className="text-4xl md:text-5xl font-black mb-8 leading-tight">{title}</h2>
@@ -91,7 +116,6 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
               </div>
             </a>
 
-            {/* 社群圖示區塊 */}
             <div>
                <p className={`text-sm font-bold mb-4 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>關注我們 / 線上諮詢</p>
                <div className="flex gap-4">
@@ -103,7 +127,6 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
           </div>
         </div>
 
-        {/* 右側：表單 */}
         <div className={`p-8 md:p-10 rounded-3xl shadow-2xl ${dark ? 'bg-white text-slate-900' : 'bg-white text-slate-900 border border-slate-100'}`}>
            <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
              <Send className="text-orange-600"/> 線上需求單

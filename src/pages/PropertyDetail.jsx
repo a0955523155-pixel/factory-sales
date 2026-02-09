@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, Flame, Medal, Newspaper, ExternalLink, Share2, Check } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import ContactSection from '../components/ContactSection'; 
+import ContactSection from '../components/ContactSection';
+import { recordView } from '../utils/analytics'; // 引入瀏覽紀錄工具
 
 // --- 規格與特色 ---
 const SpecsAndFeatures = ({ specs, features, title, description }) => (
@@ -144,7 +145,10 @@ const UnitList = ({ units }) => {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
              {displayUnits.map((u, i) => (
                 <div key={i} onClick={() => setSelectedUnit(u)} className={`p-4 rounded-xl border-2 font-bold text-lg flex flex-col items-center justify-center h-32 relative transition cursor-pointer hover:-translate-y-1 hover:shadow-lg group overflow-hidden ${u.status === 'sold' ? 'bg-slate-100 border-slate-200 text-slate-400' : u.status === 'reserved' ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : u.isHot ? 'bg-white border-red-500 text-slate-800 shadow-md ring-2 ring-red-100' : 'bg-white border-slate-200 text-slate-700 hover:border-orange-500'}`}>
-                   <span className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded text-white ${u.status === 'sold' ? 'bg-slate-400' : u.status === 'reserved' ? 'bg-yellow-500' : 'bg-green-500'}`}>{u.status === 'sold' ? '售' : u.status === 'reserved' ? '訂' : '售'}</span>
+                   
+                   {/* 狀態指示燈：純色點 (無文字) */}
+                   <div className={`absolute top-3 right-3 w-3 h-3 rounded-full shadow-sm ${u.status === 'sold' ? 'bg-slate-300' : u.status === 'reserved' ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`}></div>
+
                    {u.isHot && (<span className="absolute top-2 left-2 flex items-center gap-0.5 text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded font-black border border-red-100 animate-pulse"><Flame size={10} fill="currentColor"/> 熱銷</span>)}
                    <span className="text-2xl mb-1 font-black">{u.number}</span>
                    <div className="flex flex-col items-center text-xs opacity-80 gap-0.5 w-full">
@@ -200,7 +204,15 @@ const PropertyDetail = () => {
 
   useEffect(() => { 
     window.scrollTo(0, 0); 
-    const fetch = async () => { const docSnap = await getDoc(doc(db, "properties", id)); if (docSnap.exists()) setData(docSnap.data()); }; 
+    const fetch = async () => { 
+      const docSnap = await getDoc(doc(db, "properties", id)); 
+      if (docSnap.exists()) {
+        const docData = docSnap.data();
+        setData(docData);
+        // 紀錄瀏覽數
+        recordView(id, docData.basicInfo?.title, 'property');
+      }
+    }; 
     fetch(); 
   }, [id]);
 
@@ -220,10 +232,11 @@ const PropertyDetail = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/grid-me.png')] opacity-20 pointer-events-none"></div>
         <div className="relative z-10 h-full flex flex-col justify-end pb-24 px-6 max-w-7xl mx-auto">
-          {/* 左上角返回按鈕 */}
+          
+          {/* 回經典作品 */}
           <Link to="/works" className="absolute top-28 left-6 text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition"><ArrowLeft size={20}/> 回經典作品</Link>
           
-          {/* 右上角分享按鈕 */}
+          {/* 分享案場 */}
           <button onClick={handleShare} className={`absolute top-28 right-6 text-white/80 flex items-center gap-2 hover:text-orange-400 px-6 py-3 rounded-full backdrop-blur border font-bold transition ${copied ? 'bg-green-600/80 border-green-500 text-white' : 'bg-white/10 border-white/10'}`}>
              {copied ? <Check size={20}/> : <Share2 size={20}/>}
              {copied ? "已複製連結" : "分享案場"}

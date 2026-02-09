@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection';
 import { ArrowLeft, Calendar, Share2, Check, Copy } from 'lucide-react';
+import { recordView } from '../utils/analytics'; // 引入瀏覽紀錄工具
 
 const ArticleDetail = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -22,7 +22,10 @@ const ArticleDetail = () => {
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-          setArticle({ id: docSnap.id, ...docSnap.data() });
+          const data = docSnap.data();
+          setArticle({ id: docSnap.id, ...data });
+          // 紀錄瀏覽數
+          recordView(docSnap.id, data.title, 'article');
         } else {
           console.log("No such document!");
         }
@@ -35,7 +38,6 @@ const ArticleDetail = () => {
     fetchArticle();
   }, [id]);
 
-  // 分享功能：優先使用原生分享，若不支援則複製連結
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -68,7 +70,7 @@ const ArticleDetail = () => {
     </div>
   );
 
-  // 分類標籤樣式與返回路徑邏輯
+  // 分類標籤與返回路徑邏輯
   const categoryMap = {
     news_local: { label: '本地新聞', color: 'bg-blue-600', backPath: '/news/local' },
     news_project: { label: '建案新訊', color: 'bg-green-600', backPath: '/news/project' },
@@ -84,7 +86,6 @@ const ArticleDetail = () => {
       <Navbar />
 
       <article className="pt-32 pb-20">
-        {/* 文章頭部資訊 */}
         <div className="max-w-4xl mx-auto px-6 mb-10">
           <div className="flex flex-wrap items-center gap-4 mb-6">
             <Link to={catInfo.backPath} className="flex items-center gap-1 text-slate-500 hover:text-orange-600 transition font-bold text-sm group">
@@ -105,7 +106,6 @@ const ArticleDetail = () => {
           <div className="w-full h-[1px] bg-slate-200 my-8"></div>
         </div>
 
-        {/* 封面大圖 */}
         {article.image && (
           <div className="max-w-5xl mx-auto px-6 mb-12">
             <div className="aspect-video w-full relative overflow-hidden rounded-2xl shadow-xl bg-slate-100">
@@ -118,7 +118,6 @@ const ArticleDetail = () => {
           </div>
         )}
 
-        {/* 文章內容 */}
         <div className="max-w-3xl mx-auto px-6">
           <div className="prose prose-lg prose-slate max-w-none text-slate-700 leading-loose whitespace-pre-line text-justify break-words">
             {article.content}
