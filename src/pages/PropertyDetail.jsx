@@ -1,15 +1,20 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, Flame, Medal, Newspaper, ExternalLink, Share2, Check } from 'lucide-react';
+// ★★★ 1. 新增 Helmet 引入 (SEO 用)
+import { Helmet } from 'react-helmet-async';
+import { 
+  MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, 
+  Flame, Medal, Newspaper, ExternalLink, Share2, Check, 
+  Loader2, Phone, MessageCircle, User, FileText, Send 
+} from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import ContactSection from '../components/ContactSection';
-import { recordView } from '../utils/analytics'; // 引入瀏覽紀錄工具
+import { recordView } from '../utils/analytics'; 
 
-// --- 規格與特色 ---
+// --- 規格與特色 (維持原本質感) ---
 const SpecsAndFeatures = ({ specs, features, title, description }) => (
   <section className="py-20 px-6 max-w-7xl mx-auto">
     <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden">
@@ -32,7 +37,7 @@ const SpecsAndFeatures = ({ specs, features, title, description }) => (
   </section>
 );
 
-// --- 周遭環境與新聞區塊 ---
+// --- 周遭環境 (維持原本質感) ---
 const SurroundingsSection = ({ list }) => {
   if (!list || list.length === 0 || (list.length === 1 && !list[0].title)) return null;
 
@@ -64,7 +69,67 @@ const SurroundingsSection = ({ list }) => {
   );
 };
 
-// --- 智慧型戶別列表 ---
+// --- 3. 預約諮詢表單 (新功能：可寫入資料庫，但保留深色質感) ---
+const ContactFormSection = ({ propertyId, propertyTitle }) => {
+  const [form, setForm] = useState({ name: '', phone: '', lineId: '', message: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if(!form.name || !form.phone) return alert("請填寫姓名與電話");
+    setSubmitting(true);
+    try {
+        await addDoc(collection(db, "properties_leads"), {
+            propertyId, propertyTitle, 
+            customerName: form.name, customerPhone: form.phone, customerLine: form.lineId, 
+            message: form.message, createdAt: new Date(), status: 'new'
+        });
+        alert("資料已送出！專員將盡快與您聯繫。");
+        setForm({ name: '', phone: '', lineId: '', message: '' });
+    } catch(e) { console.error(e); alert("發生錯誤，請稍後再試"); }
+    setSubmitting(false);
+  };
+
+  return (
+    <section id="contact-section" className="py-20 px-6 bg-slate-900 relative overflow-hidden">
+        {/* 背景紋理 (維持原本深色風格) */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-black/80"></div>
+        
+        <div className="max-w-4xl mx-auto relative z-10 text-center">
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-4">預約賞屋與諮詢</h2>
+            <p className="text-slate-400 mb-10">有興趣了解更多細節？歡迎填寫下方表單，或直接加入 LINE 聯繫</p>
+            
+            <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-3xl text-left space-y-4 shadow-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">您的稱呼 *</label>
+                        <div className="relative"><User className="absolute left-3 top-3 text-slate-500" size={18}/><input required value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="王先生/小姐"/></div>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">聯絡電話 *</label>
+                        <div className="relative"><Phone className="absolute left-3 top-3 text-slate-500" size={18}/><input required value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="0912-345-678"/></div>
+                    </div>
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">LINE ID (選填)</label>
+                    <div className="relative"><MessageCircle className="absolute left-3 top-3 text-slate-500" size={18}/><input value={form.lineId} onChange={e=>setForm({...form, lineId:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="方便我們加您好友"/></div>
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">留言內容</label>
+                    <div className="relative"><FileText className="absolute left-3 top-3 text-slate-500" size={18}/><textarea value={form.message} onChange={e=>setForm({...form, message:e.target.value})} rows="3" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="我想詢問價格、預約看廠時間..."></textarea></div>
+                </div>
+                <button disabled={submitting} className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white font-black py-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    {submitting ? <Loader2 className="animate-spin"/> : <Send size={20}/>}
+                    {submitting ? "傳送中..." : "送出諮詢"}
+                </button>
+            </form>
+        </div>
+    </section>
+  );
+};
+
+// --- 4. 戶別列表 (維持原本質感) ---
 const UnitList = ({ units }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [filterZone, setFilterZone] = useState('All');
@@ -197,6 +262,7 @@ const UnitList = ({ units }) => {
 
 const LocationMap = ({ mapUrl, address }) => { if (!mapUrl) return null; return ( <section className="py-20 px-6 max-w-7xl mx-auto"><div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden"><div className="bg-slate-900 px-8 py-4 flex items-center justify-between"><h3 className="text-white font-bold flex items-center gap-2"><MapPin className="text-orange-500"/> 物件位置</h3><span className="text-slate-400 text-sm font-mono">{address}</span></div><div className="aspect-video w-full"><iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe></div></div></section> ); };
 
+// --- 5. 主頁面 (整合 SEO 與功能) ---
 const PropertyDetail = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
@@ -224,11 +290,27 @@ const PropertyDetail = () => {
 
   if (!data) return <div className="h-screen bg-slate-50 flex items-center justify-center font-mono text-2xl">LOADING...</div>;
 
+  const info = data.basicInfo || {};
+
   return (
     <div className="font-sans min-h-screen text-slate-900 bg-slate-50">
+      
+      {/* ★★★ SEO 設定 (Feature 2) ★★★ */}
+      <Helmet>
+        <title>{info.title} | 綠芽團隊</title>
+        <meta name="description" content={info.description ? info.description.substring(0, 150) : "優質工業地產物件推薦"} />
+        <meta property="og:title" content={info.title} />
+        <meta property="og:description" content={`${info.city} ${info.propertyType} | 售價 ${info.price}`} />
+        <meta property="og:image" content={info.thumb} />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:type" content="website" />
+      </Helmet>
+
       <Navbar /> 
+      
       <div className="relative h-[90vh] w-full bg-slate-900 overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${data.basicInfo.thumb})` }} />
+        {/* ★★★ 確保使用正確的封面圖 (thumb) ★★★ */}
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${info.thumb})` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/grid-me.png')] opacity-20 pointer-events-none"></div>
         <div className="relative z-10 h-full flex flex-col justify-end pb-24 px-6 max-w-7xl mx-auto">
@@ -244,20 +326,24 @@ const PropertyDetail = () => {
 
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="md:w-3/4">
             <span className="bg-orange-600 text-white px-4 py-1 text-sm font-bold uppercase tracking-widest rounded-sm mb-6 inline-block shadow-lg shadow-orange-500/50">Premium Industrial Asset</span>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-tight drop-shadow-lg">{data.basicInfo.title}</h1>
-            {data.basicInfo.subtitleEN && <p className="text-2xl text-orange-300 font-mono mb-8 tracking-widest uppercase">{data.basicInfo.subtitleEN}</p>}
-            <div className="inline-flex flex-col md:flex-row gap-10 bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl"><div className="pr-10 md:border-r border-white/20"><p className="text-sm text-slate-300 uppercase mb-2 font-bold tracking-wider">Asking Price</p><p className="text-4xl lg:text-5xl font-black text-white">{data.basicInfo.price}</p></div><div><p className="text-sm text-slate-300 uppercase mb-2 font-bold tracking-wider">Location</p><div className="flex items-center gap-3 text-white text-2xl font-bold"><MapPin className="text-orange-500" size={28} />{data.basicInfo.address}</div></div></div>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-tight drop-shadow-lg">{info.title}</h1>
+            {info.subtitleEN && <p className="text-2xl text-orange-300 font-mono mb-8 tracking-widest uppercase">{info.subtitleEN}</p>}
+            <div className="inline-flex flex-col md:flex-row gap-10 bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl"><div className="pr-10 md:border-r border-white/20"><p className="text-sm text-slate-300 uppercase mb-2 font-bold tracking-wider">Asking Price</p><p className="text-4xl lg:text-5xl font-black text-white">{info.price}</p></div><div><p className="text-sm text-slate-300 uppercase mb-2 font-bold tracking-wider">Location</p><div className="flex items-center gap-3 text-white text-2xl font-bold"><MapPin className="text-orange-500" size={28} />{info.address}</div></div></div>
           </motion.div>
         </div>
       </div>
-      <SpecsAndFeatures specs={data.specs || []} features={data.features || []} title={data.basicInfo.title} description={data.basicInfo.description} />
+      
+      <SpecsAndFeatures specs={data.specs || []} features={data.features || []} title={info.title} description={info.description} />
       
       <SurroundingsSection list={data.environmentList || []} />
 
       <UnitList units={data.units || []} />
       
-      <LocationMap mapUrl={data.basicInfo.googleMapUrl} address={data.basicInfo.address} />
-      <ContactSection title="預約賞屋與諮詢" dark={true} />
+      <LocationMap mapUrl={info.googleMapUrl} address={info.address} />
+      
+      {/* 整合好的功能表單 (取代原本靜態的 ContactSection) */}
+      <ContactFormSection propertyId={id} propertyTitle={info.title} />
+      
       <Footer />
     </div>
   );
