@@ -1,23 +1,135 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-// ★★★ 1. 新增 Helmet 引入 (SEO 用)
 import { Helmet } from 'react-helmet-async';
 import { 
   MapPin, ArrowLeft, Activity, CheckCircle2, X, Star, Info, Filter, 
   Flame, Medal, Newspaper, ExternalLink, Share2, Check, 
-  Loader2, Phone, MessageCircle, User, FileText, Send 
+  Loader2, Phone, MessageCircle, User, FileText, Send, 
+  Calculator as CalcIcon, DollarSign 
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { recordView } from '../utils/analytics'; 
+import MobileStickyBar from '../components/MobileStickyBar';
 
-// --- 規格與特色 (維持原本質感) ---
+// ==========================================
+// 1. 房貸試算機組件 (接收動態價格)
+// ==========================================
+const MortgageCalculator = ({ defaultPrice, sectionRef }) => {
+  const [totalPrice, setTotalPrice] = useState(defaultPrice || 5000);
+  const [loanRatio, setLoanRatio] = useState(70);
+  const [rate, setRate] = useState(2.1);
+  const [years, setYears] = useState(20);
+  const [gracePeriod, setGracePeriod] = useState(0);
+  const [result, setResult] = useState({ loanAmount: 0, selfPay: 0, monthlyPay: 0, gracePay: 0 });
+
+  // 當外部傳入的價格改變時 (例如點了戶別)，自動更新這裡
+  useEffect(() => {
+    if(defaultPrice && defaultPrice > 0) {
+        setTotalPrice(defaultPrice);
+    }
+  }, [defaultPrice]);
+
+  useEffect(() => {
+    const price = totalPrice || 0;
+    const loan = price * 10000 * (loanRatio / 100);
+    const self = price * 10000 - loan;
+    const monthlyRate = rate / 100 / 12;
+    const totalMonths = years * 12;
+    const graceMonths = gracePeriod * 12;
+    const actualMonths = totalMonths - graceMonths;
+    const graceMonthlyPay = Math.round(loan * monthlyRate);
+    
+    let normalMonthlyPay = 0;
+    if (monthlyRate > 0 && actualMonths > 0) {
+        const pow = Math.pow(1 + monthlyRate, actualMonths);
+        normalMonthlyPay = Math.round((loan * monthlyRate * pow) / (pow - 1));
+    } else {
+        normalMonthlyPay = Math.round(loan / (actualMonths || 1));
+    }
+
+    setResult({
+      loanAmount: Math.round(loan / 10000),
+      selfPay: Math.round(self / 10000),
+      monthlyPay: normalMonthlyPay,
+      gracePay: graceMonthlyPay
+    });
+  }, [totalPrice, loanRatio, rate, years, gracePeriod]);
+
+  return (
+    // 加入 ref 以便讓網頁可以捲動到這裡
+    <section ref={sectionRef} className="py-10 px-6 max-w-7xl mx-auto scroll-mt-24">
+      <div className="bg-slate-900 rounded-3xl border-2 border-orange-500/50 p-6 md:p-10 shadow-2xl relative overflow-hidden transition-all duration-500 hover:shadow-orange-500/20">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+        
+        <div className="flex items-center gap-3 mb-8 relative z-10 border-b border-slate-700 pb-4">
+            <div className="bg-orange-600 p-3 rounded-full text-white shadow-lg shadow-orange-500/30">
+                <CalcIcon size={24} />
+            </div>
+            <div>
+                <h3 className="text-2xl font-black text-white">購置試算工具</h3>
+                <p className="text-orange-400 text-sm font-bold tracking-wider uppercase">Mortgage Calculator</p>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
+            {/* 輸入區 */}
+            <div className="space-y-6">
+                <div>
+                    <div className="flex justify-between text-white font-bold mb-2">
+                        <label className="text-sm text-slate-400">物件總價 (萬)</label>
+                        <span className="text-orange-500 text-xl">{totalPrice.toLocaleString()} 萬</span>
+                    </div>
+                    <input type="range" min="100" max="100000" step="10" value={totalPrice} onChange={e => setTotalPrice(Number(e.target.value))} className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-600"/>
+                    <input type="number" value={totalPrice} onChange={e => setTotalPrice(Number(e.target.value))} className="w-full mt-2 bg-slate-800 text-white p-2 rounded border border-slate-700"/>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-slate-400 text-xs font-bold mb-1 block uppercase">貸款成數 (%)</label><select value={loanRatio} onChange={e => setLoanRatio(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:border-orange-500 outline-none"><option value="50">5 成</option><option value="60">6 成</option><option value="70">7 成</option><option value="80">8 成</option></select></div>
+                    <div><label className="text-slate-400 text-xs font-bold mb-1 block uppercase">年利率 (%)</label><input type="number" step="0.1" value={rate} onChange={e => setRate(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:border-orange-500 outline-none"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-slate-400 text-xs font-bold mb-1 block uppercase">貸款年限 (年)</label><select value={years} onChange={e => setYears(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:border-orange-500 outline-none"><option value="15">15 年</option><option value="20">20 年</option><option value="30">30 年</option></select></div>
+                    <div><label className="text-slate-400 text-xs font-bold mb-1 block uppercase">寬限期 (年)</label><select value={gracePeriod} onChange={e => setGracePeriod(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:border-orange-500 outline-none"><option value="0">無寬限期</option><option value="1">1 年</option><option value="2">2 年</option><option value="3">3 年</option></select></div>
+                </div>
+            </div>
+
+            {/* 結果區 */}
+            <div className="bg-slate-800/80 rounded-2xl p-6 border border-slate-600 flex flex-col justify-center relative backdrop-blur-sm">
+                <div className="space-y-6">
+                    <div className="flex justify-between items-end border-b border-slate-600 pb-4">
+                        <div><p className="text-slate-400 text-xs font-bold uppercase mb-1">自備款 ({100-loanRatio}%)</p><p className="text-2xl font-black text-white">{result.selfPay.toLocaleString()} <span className="text-sm font-normal text-slate-500">萬</span></p></div>
+                        <div className="text-right"><p className="text-slate-400 text-xs font-bold uppercase mb-1">貸款金額</p><p className="text-2xl font-black text-orange-500">{result.loanAmount.toLocaleString()} <span className="text-sm font-normal text-white">萬</span></p></div>
+                    </div>
+                    <div>
+                        <p className="text-slate-300 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide"><DollarSign size={16} className="text-green-500"/> 預估月付金</p>
+                        {gracePeriod > 0 && (
+                            <div className="flex justify-between items-center mb-2 bg-slate-700/50 p-3 rounded-xl border border-slate-600/50">
+                                <span className="text-xs font-bold text-slate-300">前 {gracePeriod} 年 (寬限期)</span>
+                                <span className="text-lg font-black text-green-400">${result.gracePay.toLocaleString()}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-orange-500/40 shadow-lg ring-1 ring-orange-500/20">
+                            <span className="text-xs font-bold text-slate-300">{gracePeriod > 0 ? `第 ${gracePeriod + 1} 年起` : '本息攤還'}</span>
+                            <span className="text-3xl font-black text-white">${result.monthlyPay.toLocaleString()} <span className="text-xs text-slate-500 font-normal">/月</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// ==========================================
+// 2. 規格與特色
+// ==========================================
 const SpecsAndFeatures = ({ specs, features, title, description }) => (
   <section className="py-20 px-6 max-w-7xl mx-auto">
-    <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden">
+    <div className="bg-slate-900 rounded-3xl p-8 md:p-16 text-white relative overflow-hidden shadow-2xl">
        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
        <div className="flex flex-col lg:flex-row gap-16 relative z-10">
           <div className="lg:w-1/3">
@@ -37,10 +149,11 @@ const SpecsAndFeatures = ({ specs, features, title, description }) => (
   </section>
 );
 
-// --- 周遭環境 (維持原本質感) ---
+// ==========================================
+// 3. 周遭環境
+// ==========================================
 const SurroundingsSection = ({ list }) => {
   if (!list || list.length === 0 || (list.length === 1 && !list[0].title)) return null;
-
   return (
     <section className="py-16 px-6 max-w-7xl mx-auto">
       <div className="text-center mb-12">
@@ -69,7 +182,9 @@ const SurroundingsSection = ({ list }) => {
   );
 };
 
-// --- 3. 預約諮詢表單 (新功能：可寫入資料庫，但保留深色質感) ---
+// ==========================================
+// 4. 預約諮詢表單
+// ==========================================
 const ContactFormSection = ({ propertyId, propertyTitle }) => {
   const [form, setForm] = useState({ name: '', phone: '', lineId: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -92,45 +207,29 @@ const ContactFormSection = ({ propertyId, propertyTitle }) => {
 
   return (
     <section id="contact-section" className="py-20 px-6 bg-slate-900 relative overflow-hidden">
-        {/* 背景紋理 (維持原本深色風格) */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-black/80"></div>
-        
         <div className="max-w-4xl mx-auto relative z-10 text-center">
             <h2 className="text-3xl md:text-4xl font-black text-white mb-4">預約賞屋與諮詢</h2>
             <p className="text-slate-400 mb-10">有興趣了解更多細節？歡迎填寫下方表單，或直接加入 LINE 聯繫</p>
-            
             <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-3xl text-left space-y-4 shadow-2xl">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">您的稱呼 *</label>
-                        <div className="relative"><User className="absolute left-3 top-3 text-slate-500" size={18}/><input required value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="王先生/小姐"/></div>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">聯絡電話 *</label>
-                        <div className="relative"><Phone className="absolute left-3 top-3 text-slate-500" size={18}/><input required value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="0912-345-678"/></div>
-                    </div>
+                    <div><label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">您的稱呼 *</label><div className="relative"><User className="absolute left-3 top-3 text-slate-500" size={18}/><input required value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="王先生/小姐"/></div></div>
+                    <div><label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">聯絡電話 *</label><div className="relative"><Phone className="absolute left-3 top-3 text-slate-500" size={18}/><input required value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="0912-345-678"/></div></div>
                 </div>
-                <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">LINE ID (選填)</label>
-                    <div className="relative"><MessageCircle className="absolute left-3 top-3 text-slate-500" size={18}/><input value={form.lineId} onChange={e=>setForm({...form, lineId:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="方便我們加您好友"/></div>
-                </div>
-                <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">留言內容</label>
-                    <div className="relative"><FileText className="absolute left-3 top-3 text-slate-500" size={18}/><textarea value={form.message} onChange={e=>setForm({...form, message:e.target.value})} rows="3" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="我想詢問價格、預約看廠時間..."></textarea></div>
-                </div>
-                <button disabled={submitting} className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white font-black py-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
-                    {submitting ? <Loader2 className="animate-spin"/> : <Send size={20}/>}
-                    {submitting ? "傳送中..." : "送出諮詢"}
-                </button>
+                <div><label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">LINE ID (選填)</label><div className="relative"><MessageCircle className="absolute left-3 top-3 text-slate-500" size={18}/><input value={form.lineId} onChange={e=>setForm({...form, lineId:e.target.value})} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="方便我們加您好友"/></div></div>
+                <div><label className="text-xs font-bold text-slate-400 uppercase ml-2 mb-1 block">留言內容</label><div className="relative"><FileText className="absolute left-3 top-3 text-slate-500" size={18}/><textarea value={form.message} onChange={e=>setForm({...form, message:e.target.value})} rows="3" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-3 pl-10 text-white focus:border-orange-500 focus:outline-none transition" placeholder="我想詢問價格、預約看廠時間..."></textarea></div></div>
+                <button disabled={submitting} className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white font-black py-4 rounded-xl hover:shadow-lg hover:shadow-orange-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">{submitting ? <Loader2 className="animate-spin"/> : <Send size={20}/>}{submitting ? "傳送中..." : "送出諮詢"}</button>
             </form>
         </div>
     </section>
   );
 };
 
-// --- 4. 戶別列表 (維持原本質感) ---
-const UnitList = ({ units }) => {
+// ==========================================
+// 5. 戶別列表 (包含點擊後傳值給父層的功能)
+// ==========================================
+const UnitList = ({ units, onUnitSelect }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [filterZone, setFilterZone] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -171,6 +270,16 @@ const UnitList = ({ units }) => {
 
   const statusTextMap = { available: '銷售中', reserved: '已預訂', sold: '已售出' };
 
+  // 處理點擊戶別：開彈窗 + 通知父層更新價格
+  const handleUnitClick = (unit) => {
+    setSelectedUnit(unit);
+    // 解析價格
+    const priceNum = parseInt(unit.price?.replace(/[^\d]/g, '') || 0);
+    if(priceNum > 0 && onUnitSelect) {
+        onUnitSelect(priceNum);
+    }
+  };
+
   return (
     <section className="py-20 px-6 max-w-7xl mx-auto bg-slate-50 border-y border-slate-200">
        <div className="text-center mb-10">
@@ -209,11 +318,8 @@ const UnitList = ({ units }) => {
        ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
              {displayUnits.map((u, i) => (
-                <div key={i} onClick={() => setSelectedUnit(u)} className={`p-4 rounded-xl border-2 font-bold text-lg flex flex-col items-center justify-center h-32 relative transition cursor-pointer hover:-translate-y-1 hover:shadow-lg group overflow-hidden ${u.status === 'sold' ? 'bg-slate-100 border-slate-200 text-slate-400' : u.status === 'reserved' ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : u.isHot ? 'bg-white border-red-500 text-slate-800 shadow-md ring-2 ring-red-100' : 'bg-white border-slate-200 text-slate-700 hover:border-orange-500'}`}>
-                   
-                   {/* 狀態指示燈：純色點 (無文字) */}
+                <div key={i} onClick={() => handleUnitClick(u)} className={`p-4 rounded-xl border-2 font-bold text-lg flex flex-col items-center justify-center h-32 relative transition cursor-pointer hover:-translate-y-1 hover:shadow-lg group overflow-hidden ${u.status === 'sold' ? 'bg-slate-100 border-slate-200 text-slate-400' : u.status === 'reserved' ? 'bg-yellow-50 border-yellow-400 text-yellow-700' : u.isHot ? 'bg-white border-red-500 text-slate-800 shadow-md ring-2 ring-red-100' : 'bg-white border-slate-200 text-slate-700 hover:border-orange-500'}`}>
                    <div className={`absolute top-3 right-3 w-3 h-3 rounded-full shadow-sm ${u.status === 'sold' ? 'bg-slate-300' : u.status === 'reserved' ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`}></div>
-
                    {u.isHot && (<span className="absolute top-2 left-2 flex items-center gap-0.5 text-[10px] text-red-600 bg-red-50 px-1.5 py-0.5 rounded font-black border border-red-100 animate-pulse"><Flame size={10} fill="currentColor"/> 熱銷</span>)}
                    <span className="text-2xl mb-1 font-black">{u.number}</span>
                    <div className="flex flex-col items-center text-xs opacity-80 gap-0.5 w-full">
@@ -262,11 +368,21 @@ const UnitList = ({ units }) => {
 
 const LocationMap = ({ mapUrl, address }) => { if (!mapUrl) return null; return ( <section className="py-20 px-6 max-w-7xl mx-auto"><div className="bg-white p-2 rounded-3xl shadow-xl border border-slate-200 overflow-hidden"><div className="bg-slate-900 px-8 py-4 flex items-center justify-between"><h3 className="text-white font-bold flex items-center gap-2"><MapPin className="text-orange-500"/> 物件位置</h3><span className="text-slate-400 text-sm font-mono">{address}</span></div><div className="aspect-video w-full"><iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe></div></div></section> ); };
 
-// --- 5. 主頁面 (整合 SEO 與功能) ---
+// ==========================================
+// 7. 主頁面 (PropertyDetail)
+// ==========================================
 const PropertyDetail = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState(0); 
   const [copied, setCopied] = useState(false);
+  
+  // ★★★ 新增：計算機的價格狀態 ★★★
+  const [calcPrice, setCalcPrice] = useState(5000);
+  
+  // ★★★ 新增：計算機的 DOM 參考點 (為了自動捲動) ★★★
+  const calculatorRef = useRef(null);
 
   useEffect(() => { 
     window.scrollTo(0, 0); 
@@ -275,9 +391,13 @@ const PropertyDetail = () => {
       if (docSnap.exists()) {
         const docData = docSnap.data();
         setData(docData);
-        // 紀錄瀏覽數
         recordView(id, docData.basicInfo?.title, 'property');
+        
+        // 預設將計算機價格設為總價
+        const defaultP = parseInt(docData.basicInfo?.price?.replace(/[^\d]/g, '') || 5000);
+        setCalcPrice(defaultP);
       }
+      setLoading(false);
     }; 
     fetch(); 
   }, [id]);
@@ -288,14 +408,26 @@ const PropertyDetail = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!data) return <div className="h-screen bg-slate-50 flex items-center justify-center font-mono text-2xl">LOADING...</div>;
+  // ★★★ 當用戶點擊戶別列表的某一戶時 ★★★
+  const handleUnitSelect = (price) => {
+    setCalcPrice(price);
+    // 平滑捲動到計算機
+    if(calculatorRef.current) {
+        calculatorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  if (loading) return <div className="min-h-screen flex justify-center items-center bg-slate-900"><Loader2 className="animate-spin text-orange-500" size={40}/></div>;
+  if (!data) return null;
 
   const info = data.basicInfo || {};
+  const displayImages = [info.thumb, ...(info.images || [])].filter(Boolean);
+  const currentBg = displayImages[activeImage] || info.thumb;
 
   return (
-    <div className="font-sans min-h-screen text-slate-900 bg-slate-50">
+    <div className="font-sans min-h-screen text-slate-900 bg-slate-50 pb-24 md:pb-0">
       
-      {/* ★★★ SEO 設定 (Feature 2) ★★★ */}
+      {/* SEO 設定 */}
       <Helmet>
         <title>{info.title} | 綠芽團隊</title>
         <meta name="description" content={info.description ? info.description.substring(0, 150) : "優質工業地產物件推薦"} />
@@ -308,23 +440,36 @@ const PropertyDetail = () => {
 
       <Navbar /> 
       
-      <div className="relative h-[90vh] w-full bg-slate-900 overflow-hidden">
-        {/* ★★★ 確保使用正確的封面圖 (thumb) ★★★ */}
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${info.thumb})` }} />
+      {/* Hero Section */}
+      <div className="relative h-[90vh] w-full bg-slate-900 overflow-hidden group">
+        <div className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out" style={{ backgroundImage: `url(${currentBg})` }} />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/grid-me.png')] opacity-20 pointer-events-none"></div>
-        <div className="relative z-10 h-full flex flex-col justify-end pb-24 px-6 max-w-7xl mx-auto">
-          
-          {/* 回經典作品 */}
-          <Link to="/works" className="absolute top-28 left-6 text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition"><ArrowLeft size={20}/> 回經典作品</Link>
-          
-          {/* 分享案場 */}
-          <button onClick={handleShare} className={`absolute top-28 right-6 text-white/80 flex items-center gap-2 hover:text-orange-400 px-6 py-3 rounded-full backdrop-blur border font-bold transition ${copied ? 'bg-green-600/80 border-green-500 text-white' : 'bg-white/10 border-white/10'}`}>
+        
+        {displayImages.length > 1 && (
+            <>
+                <button onClick={() => setActiveImage((prev) => (prev - 1 + displayImages.length) % displayImages.length)} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur transition md:opacity-0 group-hover:opacity-100 z-20">
+                    <ArrowLeft size={24} />
+                </button>
+                <button onClick={() => setActiveImage((prev) => (prev + 1) % displayImages.length)} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full text-white backdrop-blur transition md:opacity-0 group-hover:opacity-100 rotate-180 z-20">
+                    <ArrowLeft size={24} />
+                </button>
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+                    {displayImages.map((_, idx) => (
+                        <button key={idx} onClick={() => setActiveImage(idx)} className={`w-2 h-2 rounded-full transition-all ${activeImage === idx ? 'bg-orange-500 w-8' : 'bg-white/50 hover:bg-white'}`}/>
+                    ))}
+                </div>
+            </>
+        )}
+
+        <div className="relative z-10 h-full flex flex-col justify-end pb-24 px-6 max-w-7xl mx-auto pointer-events-none">
+          <Link to="/works" className="absolute top-28 left-6 text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition pointer-events-auto"><ArrowLeft size={20}/> 回經典作品</Link>
+          <button onClick={handleShare} className={`absolute top-28 right-6 text-white/80 flex items-center gap-2 hover:text-orange-400 px-6 py-3 rounded-full backdrop-blur border font-bold transition pointer-events-auto ${copied ? 'bg-green-600/80 border-green-500 text-white' : 'bg-white/10 border-white/10'}`}>
              {copied ? <Check size={20}/> : <Share2 size={20}/>}
              {copied ? "已複製連結" : "分享案場"}
           </button>
 
-          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="md:w-3/4">
+          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="md:w-3/4 pointer-events-auto">
             <span className="bg-orange-600 text-white px-4 py-1 text-sm font-bold uppercase tracking-widest rounded-sm mb-6 inline-block shadow-lg shadow-orange-500/50">Premium Industrial Asset</span>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-tight drop-shadow-lg">{info.title}</h1>
             {info.subtitleEN && <p className="text-2xl text-orange-300 font-mono mb-8 tracking-widest uppercase">{info.subtitleEN}</p>}
@@ -337,14 +482,19 @@ const PropertyDetail = () => {
       
       <SurroundingsSection list={data.environmentList || []} />
 
-      <UnitList units={data.units || []} />
+      {/* ★★★ 將 UnitList 的點擊事件傳遞給父層 ★★★ */}
+      <UnitList units={data.units || []} onUnitSelect={handleUnitSelect} />
       
+      {/* ★★★ 計算機放在戶別列表下方，並接收 calcPrice 狀態 ★★★ */}
+      <MortgageCalculator defaultPrice={calcPrice} sectionRef={calculatorRef} />
+
       <LocationMap mapUrl={info.googleMapUrl} address={info.address} />
-      
-      {/* 整合好的功能表單 (取代原本靜態的 ContactSection) */}
+
       <ContactFormSection propertyId={id} propertyTitle={info.title} />
-      
+
       <Footer />
+      
+      <MobileStickyBar agentPhone={info.agentPhone} lineId={info.lineId} title={info.title} />
     </div>
   );
 };
