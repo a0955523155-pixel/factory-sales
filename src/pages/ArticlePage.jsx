@@ -180,7 +180,7 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
                     {items.map((item) => {
                       const status = getProjectStatus(item);
                       return (
-                      <Link to={`/property/${item.id}`} key={item.id} className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 border flex flex-col h-full transform hover:-translate-y-1 relative ${item.basicInfo?.isFeaturedWork ? 'border-orange-200 ring-2 ring-orange-100' : 'border-slate-100'}`}>
+                      <Link to={`/property/${item.basicInfo?.title}`} key={item.id} className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 border flex flex-col h-full transform hover:-translate-y-1 relative ${item.basicInfo?.isFeaturedWork ? 'border-orange-200 ring-2 ring-orange-100' : 'border-slate-100'}`}>
                         <div className="relative h-64 overflow-hidden bg-slate-100">
                           {item.basicInfo?.thumb ? <img src={item.basicInfo.thumb} alt={item.basicInfo.title} className={`w-full h-full object-cover transition duration-700 ${status.type === 'soldout' ? 'grayscale opacity-50' : 'group-hover:scale-110'}`} /> : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold">NO IMAGE</div>}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-40 transition" />

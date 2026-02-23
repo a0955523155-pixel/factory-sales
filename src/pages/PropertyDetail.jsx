@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
+// ★ 確保這裡有引入所有需要的 Firebase 工具 (包含 doc, getDoc, query, where)
+import { doc, getDoc, addDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { 
@@ -16,7 +17,7 @@ import { recordView } from '../utils/analytics';
 import MobileStickyBar from '../components/MobileStickyBar';
 
 // ==========================================
-// 1. 房貸試算機組件 (接收動態價格)
+// 1. 房貸試算機組件
 // ==========================================
 const MortgageCalculator = ({ defaultPrice, sectionRef }) => {
   const [totalPrice, setTotalPrice] = useState(defaultPrice || 5000);
@@ -26,7 +27,6 @@ const MortgageCalculator = ({ defaultPrice, sectionRef }) => {
   const [gracePeriod, setGracePeriod] = useState(0);
   const [result, setResult] = useState({ loanAmount: 0, selfPay: 0, monthlyPay: 0, gracePay: 0 });
 
-  // 當外部傳入的價格改變時 (例如點了戶別)，自動更新這裡
   useEffect(() => {
     if(defaultPrice && defaultPrice > 0) {
         setTotalPrice(defaultPrice);
@@ -60,7 +60,6 @@ const MortgageCalculator = ({ defaultPrice, sectionRef }) => {
   }, [totalPrice, loanRatio, rate, years, gracePeriod]);
 
   return (
-    // 加入 ref 以便讓網頁可以捲動到這裡
     <section ref={sectionRef} className="py-10 px-6 max-w-7xl mx-auto scroll-mt-24">
       <div className="bg-slate-900 rounded-3xl border-2 border-orange-500/50 p-6 md:p-10 shadow-2xl relative overflow-hidden transition-all duration-500 hover:shadow-orange-500/20">
         <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
@@ -76,7 +75,6 @@ const MortgageCalculator = ({ defaultPrice, sectionRef }) => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
-            {/* 輸入區 */}
             <div className="space-y-6">
                 <div>
                     <div className="flex justify-between text-white font-bold mb-2">
@@ -96,7 +94,6 @@ const MortgageCalculator = ({ defaultPrice, sectionRef }) => {
                 </div>
             </div>
 
-            {/* 結果區 */}
             <div className="bg-slate-800/80 rounded-2xl p-6 border border-slate-600 flex flex-col justify-center relative backdrop-blur-sm">
                 <div className="space-y-6">
                     <div className="flex justify-between items-end border-b border-slate-600 pb-4">
@@ -227,7 +224,7 @@ const ContactFormSection = ({ propertyId, propertyTitle }) => {
 };
 
 // ==========================================
-// 5. 戶別列表 (包含點擊後傳值給父層的功能)
+// 5. 戶別列表
 // ==========================================
 const UnitList = ({ units, onUnitSelect }) => {
   const [selectedUnit, setSelectedUnit] = useState(null);
@@ -270,10 +267,8 @@ const UnitList = ({ units, onUnitSelect }) => {
 
   const statusTextMap = { available: '銷售中', reserved: '已預訂', sold: '已售出' };
 
-  // 處理點擊戶別：開彈窗 + 通知父層更新價格
   const handleUnitClick = (unit) => {
     setSelectedUnit(unit);
-    // 解析價格
     const priceNum = parseInt(unit.price?.replace(/[^\d]/g, '') || 0);
     if(priceNum > 0 && onUnitSelect) {
         onUnitSelect(priceNum);
@@ -378,24 +373,56 @@ const PropertyDetail = () => {
   const [activeImage, setActiveImage] = useState(0); 
   const [copied, setCopied] = useState(false);
   
-  // ★★★ 新增：計算機的價格狀態 ★★★
   const [calcPrice, setCalcPrice] = useState(5000);
-  
-  // ★★★ 新增：計算機的 DOM 參考點 (為了自動捲動) ★★★
   const calculatorRef = useRef(null);
 
   useEffect(() => { 
     window.scrollTo(0, 0); 
     const fetch = async () => { 
-      const docSnap = await getDoc(doc(db, "properties", id)); 
-      if (docSnap.exists()) {
-        const docData = docSnap.data();
-        setData(docData);
-        recordView(id, docData.basicInfo?.title, 'property');
+      try {
+        // ★★★ 雙保險讀取機制開始 ★★★
+        const decodedId = decodeURIComponent(id); // 1. 解碼網址
+        let finalDocData = null;
+        let finalDocId = null;
+
+        // 2. 策略 A：先假設傳進來的是「舊版亂碼 ID」
+        const docRef = doc(db, "properties", decodedId);
+        const docSnap = await getDoc(docRef);
         
-        // 預設將計算機價格設為總價
-        const defaultP = parseInt(docData.basicInfo?.price?.replace(/[^\d]/g, '') || 5000);
-        setCalcPrice(defaultP);
+        if (docSnap.exists()) {
+          finalDocData = docSnap.data();
+          finalDocId = docSnap.id;
+        } else {
+          // 3. 策略 B：如果亂碼 ID 找不到，代表這是「中文標題連結」，改用 query 搜尋
+          const q = query(
+            collection(db, "properties"), 
+            where("basicInfo.title", "==", decodedId), 
+            limit(1)
+          );
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            finalDocData = querySnapshot.docs[0].data();
+            finalDocId = querySnapshot.docs[0].id;
+          }
+        }
+
+        // 4. 最終結算
+        if (finalDocData) {
+          setData(finalDocData);
+          
+          // analytics 紀錄 (傳入真實的 ID)
+          recordView(finalDocId, finalDocData.basicInfo?.title, 'property');
+          
+          const defaultP = parseInt(finalDocData.basicInfo?.price?.replace(/[^\d]/g, '') || 5000);
+          setCalcPrice(defaultP);
+        } else {
+          console.log("找不到該建案！搜尋字串為:", decodedId);
+          // 可以設計 404 頁面
+        }
+        // ★★★ 雙保險讀取機制結束 ★★★
+      } catch (error) {
+        console.error("讀取物件資料失敗:", error);
       }
       setLoading(false);
     }; 
@@ -408,17 +435,15 @@ const PropertyDetail = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // ★★★ 當用戶點擊戶別列表的某一戶時 ★★★
   const handleUnitSelect = (price) => {
     setCalcPrice(price);
-    // 平滑捲動到計算機
     if(calculatorRef.current) {
         calculatorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
   if (loading) return <div className="min-h-screen flex justify-center items-center bg-slate-900"><Loader2 className="animate-spin text-orange-500" size={40}/></div>;
-  if (!data) return null;
+  if (!data) return <div className="min-h-screen flex flex-col justify-center items-center bg-slate-50"><h2 className="text-2xl font-bold text-slate-800 mb-4">找不到該建案資料</h2><Link to="/works" className="px-6 py-2 bg-orange-500 text-white rounded-lg">返回列表</Link></div>;
 
   const info = data.basicInfo || {};
   const displayImages = [info.thumb, ...(info.images || [])].filter(Boolean);
@@ -482,10 +507,8 @@ const PropertyDetail = () => {
       
       <SurroundingsSection list={data.environmentList || []} />
 
-      {/* ★★★ 將 UnitList 的點擊事件傳遞給父層 ★★★ */}
       <UnitList units={data.units || []} onUnitSelect={handleUnitSelect} />
       
-      {/* ★★★ 計算機放在戶別列表下方，並接收 calcPrice 狀態 ★★★ */}
       <MortgageCalculator defaultPrice={calcPrice} sectionRef={calculatorRef} />
 
       <LocationMap mapUrl={info.googleMapUrl} address={info.address} />

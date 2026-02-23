@@ -112,7 +112,8 @@ const Home = () => {
             {properties.map((item) => {
               const status = getProjectStatus(item);
               return (
-                <Link to={`/property/${item.id}`} key={item.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 transform hover:-translate-y-2 flex flex-col h-full relative">
+                // ★★★ 修正點：這裡改成 item.basicInfo.title ★★★
+                <Link to={`/property/${item.basicInfo?.title}`} key={item.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 transform hover:-translate-y-2 flex flex-col h-full relative">
                   <div className="relative h-72 overflow-hidden bg-slate-200">
                     {item.basicInfo.thumb ? (
                       <img src={item.basicInfo.thumb} alt={item.basicInfo.title} className={`w-full h-full object-cover transition duration-700 ${status.type === 'soldout' ? 'grayscale opacity-50' : 'group-hover:scale-110'}`} />
@@ -128,7 +129,6 @@ const Home = () => {
 
                     <div className="absolute bottom-6 left-6 text-white">
                       <h3 className="text-2xl font-bold leading-tight mb-1 drop-shadow-md">{item.basicInfo.title}</h3>
-                      {/* FIX: 顯示 Transaction Type */}
                       <p className="text-sm opacity-90 flex items-center gap-1"><MapPin size={14}/> {item.basicInfo.city} {item.basicInfo.transactionType || '出售'}</p>
                     </div>
                   </div>
