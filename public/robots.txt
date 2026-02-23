@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kh-pt-factory.com/sitemap.xml
