@@ -30,11 +30,25 @@ const Home = () => {
         propSnap.forEach((doc) => propList.push({ id: doc.id, ...doc.data() }));
         setProperties(propList);
 
-        const newsRef = collection(db, "articles");
-        const newsSnap = await getDocs(query(newsRef, orderBy("createdAt", "desc"), limit(3)));
-        const newsList = [];
-        newsSnap.forEach((doc) => newsList.push({ id: doc.id, ...doc.data() }));
-        setLatestNews(newsList);
+       // --- 修改 Home.jsx 中的 fetchData 區段 ---
+const newsRef = collection(db, "articles");
+const categories = ['news_local', 'news_project', 'academy'];
+const newsList = [];
+
+// 分別為三個分類執行查詢，各取一筆最新的
+for (const cat of categories) {
+  const q = query(
+    newsRef, 
+    where("category", "==", cat), 
+    orderBy("createdAt", "desc"), 
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  snap.forEach((doc) => newsList.push({ id: doc.id, ...doc.data() }));
+}
+
+// 依照分類固定順序顯示 (或是您可以依照時間重新排序)
+setLatestNews(newsList);
 
         const settingsSnap = await getDoc(doc(db, "settings", "global"));
         if (settingsSnap.exists()) setGlobalSettings(settingsSnap.data());
@@ -170,18 +184,52 @@ const Home = () => {
             <h2 className="text-4xl md:text-5xl font-black text-slate-900 mt-2">最新動態</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            {latestNews.map((news) => (
-              <Link to={`/article/${news.id}`} key={news.id} className="border-b border-slate-100 pb-8 last:border-0 md:border-0 md:pb-0 block group cursor-pointer">
-                <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${news.category.includes('local') ? 'bg-blue-500' : news.category==='academy'?'bg-purple-500':'bg-green-500'}`}>
-                   {news.category.includes('local') ? '本地新聞' : news.category==='academy'?'小學堂':'新案消息'}
-                </span>
-                <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition">{news.title}</h3>
-                <p className="text-slate-400 text-sm mb-4 line-clamp-2">{news.content}</p>
-                <span className="text-xs text-slate-300 font-mono">{news.date}</span>
-              </Link>
-            ))}
+{/* ✅ 修正後的最新動態卡片 (含圖片與去標籤解析) */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+  {latestNews.map((news) => (
+    <Link to={`/article/${news.id}`} key={news.id} className="group block cursor-pointer">
+      {/* 圖片顯示區 */}
+      <div className="aspect-video w-full mb-4 overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
+        {news.image ? (
+          <img 
+            src={news.image} 
+            alt="" 
+            className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-100">
+            <FileText size={40} />
           </div>
+        )}
+      </div>
+
+      <span className={`text-[10px] font-bold px-2 py-1 rounded text-white mb-3 inline-block ${
+        news.category === 'news_local' ? 'bg-blue-500' : 
+        news.category === 'academy' ? 'bg-purple-500' : 'bg-green-500'
+      }`}>
+         {news.category === 'news_local' ? '本地新聞' : 
+          news.category === 'academy' ? '小學堂' : '建案新訊'}
+      </span>
+      
+      {/* 標題：解析 HTML 樣式 */}
+      <h3 
+        className="text-lg font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition ql-editor line-clamp-2"
+        style={{ padding: 0, minHeight: 'auto' }}
+        dangerouslySetInnerHTML={{ __html: news.title }} 
+      />
+      
+      {/* 內文摘要：過濾 HTML 標籤 */}
+      <p className="text-slate-500 text-sm mb-4 line-clamp-2 leading-relaxed">
+        {news.content ? news.content.replace(/<[^>]*>?/gm, '').substring(0, 60) : ''}...
+      </p>
+      
+      <div className="flex items-center justify-between text-xs text-slate-300">
+        <span className="font-mono">{news.date}</span>
+        <span className="text-orange-500 font-bold opacity-0 group-hover:opacity-100 transition">閱讀全文 →</span>
+      </div>
+    </Link>
+  ))}
+</div>
 
           <div className="flex flex-col md:flex-row gap-6 justify-center">
              <Link to="/news/local" className="group relative bg-slate-900 text-white px-8 py-5 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all w-full md:w-auto min-w-[240px] text-center">
