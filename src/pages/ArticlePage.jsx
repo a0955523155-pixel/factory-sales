@@ -6,6 +6,8 @@ import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection';
 import { Calendar, ArrowRight, MapPin, Filter, Search, Building2, Ruler, Banknote, Map, Briefcase, Award, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
+// ★★★ 確保這裡有引入 Helmet ★★★
+import { Helmet } from 'react-helmet-async';
 
 const ArticlePage = ({ categoryGroup, category, title }) => {
   const [dataList, setDataList] = useState([]);
@@ -96,13 +98,11 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
         let hasMatchingUnit = false;
         
         if (filters.ping === '>200') {
-            // 判斷 200坪以上
             hasMatchingUnit = (item.units || []).some(u => {
                 const p = parseFloat(u.ping);
                 return !isNaN(p) && p >= 200;
             });
         } else {
-            // 判斷區間 (如 80-120)
             const [minStr, maxStr] = filters.ping.split('-');
             const min = parseFloat(minStr);
             const max = parseFloat(maxStr);
@@ -142,6 +142,19 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
 
   return (
     <div className="font-sans min-h-screen bg-slate-50 flex flex-col">
+      
+      {/* ★★★ SEO 設定 (列表與文章版) ★★★ */}
+      <Helmet>
+        <title>{`${title || '精選列表'}｜高雄屏東工業地產與最新市場資訊｜綠芽團隊`}</title>
+        <meta name="description" content={isWorksPage 
+          ? "瀏覽綠芽團隊精選的高雄與屏東廠房、工業地、農地物件列表。透過多條件快速篩選，精準找到符合您企業需求的廠房與土地。" 
+          : "綠芽團隊房地產小學堂與最新動態。掌握大高雄與屏東工業地產最新法規、稅務解析、區域發展建設利多與實價登錄行情。"} 
+        />
+        <meta property="og:title" content={`${title || '精選列表'}｜綠芽團隊`} />
+        <meta property="og:description" content={isWorksPage ? "高雄屏東優質廠房/工業地精選推薦" : "房地產小學堂與最新動態"} />
+        <meta property="og:type" content="website" />
+      </Helmet>
+
       <Navbar />
       <div className="bg-slate-900 pt-32 pb-20 px-6">
         <div className="max-w-7xl mx-auto text-center">
@@ -161,7 +174,6 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
                 <FilterSelect icon={Briefcase} label="交易類別" value={filters.transaction} onChange={v => setFilters({...filters, transaction: v})} options={[{label:'不限', value:'All'}, {label:'出售', value:'出售'}, {label:'出租', value:'出租'}]} />
                 <FilterSelect icon={Building2} label="用途" value={filters.usage} onChange={v => setFilters({...filters, usage: v})} options={[{label:'不限', value:'All'}, {label:'廠房', value:'廠房'}, {label:'透天', value:'透天'}, {label:'農地', value:'農地'}]} />
                 <FilterSelect icon={Banknote} label="預算總價" value={filters.price} onChange={v => setFilters({...filters, price: v})} options={[{label:'不限預算', value:'All'}, {label:'1000萬以下', value:'<1000'}, {label:'1000-3000萬', value:'1000-3000'}, {label:'3000-6000萬', value:'3000-6000'}, {label:'6000萬以上', value:'>6000'}]} />
-                {/* FIX: 使用指定的區間選項 */}
                 <FilterSelect icon={Ruler} label="坪數" value={filters.ping} onChange={v => setFilters({...filters, ping: v})} options={pingOptions} />
              </div>
              <button onClick={() => setFilters({ city: 'All', district: 'All', type: 'All', transaction: 'All', usage: 'All', price: 'All', ping: 'All' })} className="mt-4 w-full bg-slate-100 text-slate-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition">重置篩選</button>
@@ -180,7 +192,7 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
                     {items.map((item) => {
                       const status = getProjectStatus(item);
                       return (
-                      <Link to={`/property/${item.basicInfo?.title}`} key={item.id} className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 border flex flex-col h-full transform hover:-translate-y-1 relative ${item.basicInfo?.isFeaturedWork ? 'border-orange-200 ring-2 ring-orange-100' : 'border-slate-100'}`}>
+                      <Link to={`/property/${item.basicInfo?.title || item.id}`} key={item.id} className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 border flex flex-col h-full transform hover:-translate-y-1 relative ${item.basicInfo?.isFeaturedWork ? 'border-orange-200 ring-2 ring-orange-100' : 'border-slate-100'}`}>
                         <div className="relative h-64 overflow-hidden bg-slate-100">
                           {item.basicInfo?.thumb ? <img src={item.basicInfo.thumb} alt={item.basicInfo.title} className={`w-full h-full object-cover transition duration-700 ${status.type === 'soldout' ? 'grayscale opacity-50' : 'group-hover:scale-110'}`} /> : <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold">NO IMAGE</div>}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-40 transition" />

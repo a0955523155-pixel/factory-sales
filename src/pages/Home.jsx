@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs, limit, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
+// ★★★ 確保這裡有引入 Helmet ★★★
+import { Helmet } from 'react-helmet-async';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import ContactSection from '../components/ContactSection';
-import { ArrowRight, MapPin, Newspaper, Megaphone, Lock, Clock, Flame } from 'lucide-react';
+import { ArrowRight, MapPin, Newspaper, Megaphone, Flame } from 'lucide-react';
 
 const Home = () => {
   const [properties, setProperties] = useState([]);
@@ -59,6 +61,16 @@ const Home = () => {
 
   return (
     <div className="font-sans text-slate-900 bg-white selection:bg-orange-100 selection:text-orange-900">
+      
+      {/* ★★★ SEO 設定 (首頁門面版) ★★★ */}
+      <Helmet>
+        <title>綠芽團隊｜高雄、屏東廠房與工業地買賣出租首選品牌</title>
+        <meta name="description" content="專注於高雄與屏東地區的工業地產開發與銷售。綠芽團隊提供專業的廠房買賣、工業地出租、農地與建地投資諮詢服務。整合交通優勢與產業聚落，為您的企業尋找最佳生產據點！" />
+        <meta name="keywords" content="高雄廠房, 屏東廠房, 工業地買賣, 廠房出租, 天車廠房, 綠芽團隊, 高雄不動產, 農地買賣,大成工業城,九大工業城,華富工業城,新鎮工業城,弓鼎工業城,工業城,可廠登,合法廠房" />
+        <meta property="og:title" content="綠芽團隊｜高雄屏東工業地產專業顧問" />
+        <meta property="og:type" content="website" />
+      </Helmet>
+
       <Navbar />
 
       <header className="relative h-screen flex items-center justify-center overflow-hidden">
@@ -112,8 +124,7 @@ const Home = () => {
             {properties.map((item) => {
               const status = getProjectStatus(item);
               return (
-                // ★★★ 修正點：這裡改成 item.basicInfo.title ★★★
-                <Link to={`/property/${item.basicInfo?.title}`} key={item.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 transform hover:-translate-y-2 flex flex-col h-full relative">
+                <Link to={`/property/${item.basicInfo.title}`} key={item.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 transform hover:-translate-y-2 flex flex-col h-full relative">
                   <div className="relative h-72 overflow-hidden bg-slate-200">
                     {item.basicInfo.thumb ? (
                       <img src={item.basicInfo.thumb} alt={item.basicInfo.title} className={`w-full h-full object-cover transition duration-700 ${status.type === 'soldout' ? 'grayscale opacity-50' : 'group-hover:scale-110'}`} />

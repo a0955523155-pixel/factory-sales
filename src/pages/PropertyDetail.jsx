@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
-// ★ 確保這裡有引入所有需要的 Firebase 工具 (包含 doc, getDoc, query, where)
 import { doc, getDoc, addDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
@@ -380,12 +379,10 @@ const PropertyDetail = () => {
     window.scrollTo(0, 0); 
     const fetch = async () => { 
       try {
-        // ★★★ 雙保險讀取機制開始 ★★★
-        const decodedId = decodeURIComponent(id); // 1. 解碼網址
+        const decodedId = decodeURIComponent(id);
         let finalDocData = null;
         let finalDocId = null;
 
-        // 2. 策略 A：先假設傳進來的是「舊版亂碼 ID」
         const docRef = doc(db, "properties", decodedId);
         const docSnap = await getDoc(docRef);
         
@@ -393,7 +390,6 @@ const PropertyDetail = () => {
           finalDocData = docSnap.data();
           finalDocId = docSnap.id;
         } else {
-          // 3. 策略 B：如果亂碼 ID 找不到，代表這是「中文標題連結」，改用 query 搜尋
           const q = query(
             collection(db, "properties"), 
             where("basicInfo.title", "==", decodedId), 
@@ -407,20 +403,14 @@ const PropertyDetail = () => {
           }
         }
 
-        // 4. 最終結算
         if (finalDocData) {
           setData(finalDocData);
-          
-          // analytics 紀錄 (傳入真實的 ID)
           recordView(finalDocId, finalDocData.basicInfo?.title, 'property');
-          
           const defaultP = parseInt(finalDocData.basicInfo?.price?.replace(/[^\d]/g, '') || 5000);
           setCalcPrice(defaultP);
         } else {
           console.log("找不到該建案！搜尋字串為:", decodedId);
-          // 可以設計 404 頁面
         }
-        // ★★★ 雙保險讀取機制結束 ★★★
       } catch (error) {
         console.error("讀取物件資料失敗:", error);
       }
@@ -452,12 +442,17 @@ const PropertyDetail = () => {
   return (
     <div className="font-sans min-h-screen text-slate-900 bg-slate-50 pb-24 md:pb-0">
       
-      {/* SEO 設定 */}
+      {/* ★★★ SEO 設定 (物件內頁強化版) ★★★ */}
       <Helmet>
-        <title>{info.title} | 綠芽團隊</title>
-        <meta name="description" content={info.description ? info.description.substring(0, 150) : "優質工業地產物件推薦"} />
-        <meta property="og:title" content={info.title} />
-        <meta property="og:description" content={`${info.city} ${info.propertyType} | 售價 ${info.price}`} />
+        {/* 自動組合：大成工業城｜高雄仁武 廠房 出售｜綠芽團隊 */}
+        <title>{`${info.title}｜${info.city || '高屏地區'} ${info.propertyType || '工業地/廠房'} ${info.transactionType || '買賣'}｜綠芽團隊`}</title>
+        
+        {/* 描述自動塞入地區與類型，增加被搜尋到的機率 */}
+        <meta name="description" content={info.description ? info.description.substring(0, 150) : `綠芽團隊嚴選推薦：位於${info.city || '南台灣'}的優質${info.propertyType || '廠房物件'}。提供最專業的實價登錄解析與帶看服務，立即了解 ${info.title} 的詳細價格與坪數資訊！`} />
+        
+        {/* 這些是給 Facebook / LINE 分享時用的漂亮卡片資訊 */}
+        <meta property="og:title" content={`${info.title}｜綠芽團隊精選`} />
+        <meta property="og:description" content={`${info.city || ''} ${info.propertyType || ''} ${info.transactionType || ''} | 售價 ${info.price}`} />
         <meta property="og:image" content={info.thumb} />
         <meta property="og:url" content={window.location.href} />
         <meta property="og:type" content="website" />

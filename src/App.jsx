@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// ★★★ 1. 新增引入剛剛寫好的隱形追蹤器 ★★★
+// ★★★ 1. 隱形追蹤器 ★★★
 import AnalyticsTracker from './components/AnalyticsTracker';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -12,6 +12,9 @@ const Contact = lazy(() => import('./pages/Contact'));
 const About = lazy(() => import('./pages/About'));
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail'));
 
+// ★★★ 新增：引入 Sitemap 產生器 ★★★
+const SitemapGenerator = lazy(() => import('./pages/SitemapGenerator'));
+
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50">
     <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500"></div>
@@ -21,7 +24,7 @@ const LoadingScreen = () => (
 function App() {
   return (
     <Router>
-      {/* ★★★ 2. 把追蹤器放在 Router 裡面，Suspense 和 Routes 的外面 ★★★ */}
+      {/* 追蹤器放在 Router 裡面，Suspense 和 Routes 的外面 */}
       <AnalyticsTracker />
       
       <Suspense fallback={<LoadingScreen />}>
@@ -40,6 +43,10 @@ function App() {
           
           <Route path="/works" element={<ArticlePage categoryGroup="works" title="經典作品" />} />
           
+          {/* ★★★ 新增：隱藏的 Sitemap 產生器路由 (必須放在 * 的前面) ★★★ */}
+          <Route path="/build-sitemap" element={<SitemapGenerator />} />
+          
+          {/* 找不到網址時，自動導回首頁 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

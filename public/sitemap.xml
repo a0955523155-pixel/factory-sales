@@ -2,28 +2,76 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://kh-pt-factory.com/</loc>
-    <lastmod>2026-02-15</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
-
   <url>
     <loc>https://kh-pt-factory.com/works</loc>
-    <lastmod>2026-02-15</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <priority>1.0</priority>
   </url>
-
-  <url>
-    <loc>https://kh-pt-factory.com/about</loc>
-    <lastmod>2026-02-15</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  
   <url>
     <loc>https://kh-pt-factory.com/contact</loc>
-    <lastmod>2026-02-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/about</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/property/%E7%92%B0%E7%90%83%E5%B7%A5%E6%A5%AD%E5%9F%8E</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/property/%E6%96%B0%E9%8E%AE%E5%B7%A5%E6%A5%AD%E5%9F%8E</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/property/%E4%B9%9D%E5%A4%A7%E5%B7%A5%E6%A5%AD%E5%9F%8E</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/property/%E8%8F%AF%E5%AF%8C%E5%B7%A5%E6%A5%AD%E5%9F%8E%E4%B8%80%E6%9C%9F</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/property/%E8%8F%AF%E5%AF%8C%E5%B7%A5%E6%A5%AD%E5%9F%8E%E4%BA%8C%E6%9C%9F</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/property/%E5%A4%A7%E6%88%90%E5%B7%A5%E6%A5%AD%E5%9F%8E</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/property/%E5%BC%93%E9%BC%8E%E5%B7%A5%E6%A5%AD%E5%9F%8E</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/article/Lfe5PNhiGmm5pAL1INQ7</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/article/auNlrX753rd7Gap4VOOz</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/article/ctlDBQ6SL4rOwByJneuW</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://kh-pt-factory.com/article/j2kMqhdJSULBSMr7grjj</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
