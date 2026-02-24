@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../../firebase'; // 確保路徑正確
-import { Globe, TrendingUp, Trash2, Loader2 } from 'lucide-react';
+import { db } from '../../firebase';
+import { Globe, TrendingUp, Trash2, Loader2, Target, MousePointerClick, PhoneCall } from 'lucide-react';
 
 const DashboardPanel = () => {
-  const [stats, setStats] = useState({ today: 0, week: 0, month: 0, total: 0, sources: {}, topPages: [] });
+  const [stats, setStats] = useState({ 
+    today: 0, week: 0, month: 0, total: 0, 
+    sources: {}, topPages: [], 
+    convRate: 0, 
+    convDetails: { form: 0, phone: 0, line: 0 } 
+  });
   const [isClearing, setIsClearing] = useState(false);
 
   const fetchAnalytics = async () => {
@@ -23,69 +28,57 @@ const DashboardPanel = () => {
   const calculateStats = (data) => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    
-    const oneWeekAgo = new Date(); 
-    oneWeekAgo.setDate(now.getDate() - 7);
-    
-    const oneMonthAgo = new Date(); 
-    oneMonthAgo.setMonth(now.getMonth() - 1);
+    const oneWeekAgo = new Date(); oneWeekAgo.setDate(now.getDate() - 7);
+    const oneMonthAgo = new Date(); oneMonthAgo.setMonth(now.getMonth() - 1);
 
     let today = 0, week = 0, month = 0, total = 0;
     let sourceMap = {};
     let pageMap = {};
+    let conversions = { form: 0, phone: 0, line: 0 };
 
     data.forEach(d => {
-      // 1. 處理時間
       const viewDate = d.timestamp ? d.timestamp.toDate() : new Date();
       const viewDateStr = viewDate.toISOString().split('T')[0];
 
-      total += 1;
-      if (viewDateStr === todayStr) today += 1;
-      if (viewDate >= oneWeekAgo) week += 1;
-      if (viewDate >= oneMonthAgo) month += 1;
+      // 判斷是否為「轉換路徑」
+      const isConversion = d.path?.includes("/conversion/");
 
-      // 2. 統計來源
-      const src = d.source || "直接輸入網址/未知";
-      sourceMap[src] = (sourceMap[src] || 0) + 1;
+      if (!isConversion) {
+        // --- 正常流量統計 ---
+        total += 1;
+        if (viewDateStr === todayStr) today += 1;
+        if (viewDate >= oneWeekAgo) week += 1;
+        if (viewDate >= oneMonthAgo) month += 1;
 
-      // 3. 統計熱門頁面
-      let rawPath = d.path || "/";
-      let path = rawPath;
-      
-      // ★★★ 核心修正：將網址 URL 解碼，把 %E8... 轉回漂亮的中文 ★★★
-      try {
-        path = decodeURIComponent(rawPath);
-      } catch (e) {
-        console.error("網址解碼失敗", e);
+        const src = d.source || "直接輸入網址/未知";
+        sourceMap[src] = (sourceMap[src] || 0) + 1;
+
+        let rawPath = d.path || "/";
+        let path = rawPath;
+        try { path = decodeURIComponent(rawPath); } catch (e) {}
+
+        let pageTitle = path;
+        let pageType = "一般頁面";
+        if (path === "/") { pageTitle = "綠芽團隊首頁"; pageType = "首頁"; }
+        else if (path === "/works") { pageTitle = "經典作品列表"; pageType = "列表頁"; }
+        else if (path === "/contact") { pageTitle = "聯絡我們"; pageType = "表單頁"; }
+        else if (path.includes("/property/")) { pageTitle = `廠房物件 (${path.replace('/property/', '')})`; pageType = "物件詳情"; }
+
+        if (!pageMap[path]) pageMap[path] = { title: pageTitle, type: pageType, count: 0 };
+        pageMap[path].count += 1;
+      } else {
+        // --- 轉換指標統計 ---
+        if (d.path === "/conversion/form_submit") conversions.form += 1;
+        if (d.path === "/conversion/phone_call") conversions.phone += 1;
+        if (d.path === "/conversion/line_click") conversions.line += 1;
       }
-
-      let pageTitle = path;
-      let pageType = "一般頁面";
-
-      // 網址翻譯蒟蒻
-      if (path === "/") { pageTitle = "綠芽團隊首頁"; pageType = "首頁"; }
-      else if (path === "/works") { pageTitle = "經典作品列表"; pageType = "列表頁"; }
-      else if (path === "/contact") { pageTitle = "聯絡我們"; pageType = "表單頁"; }
-      else if (path === "/about") { pageTitle = "關於團隊"; pageType = "介紹頁"; }
-      else if (path.includes("/property/")) { 
-        pageTitle = `廠房物件 (${path.replace('/property/', '')})`; 
-        pageType = "物件詳情"; 
-      }
-      else if (path.includes("/article/")) {
-        pageTitle = `文章/新聞 (${path.replace('/article/', '')})`; 
-        pageType = "最新消息"; 
-      }
-
-      // 寫入 pageMap 統計次數
-      if (!pageMap[path]) {
-        pageMap[path] = { title: pageTitle, type: pageType, count: 0 };
-      }
-      pageMap[path].count += 1;
     });
 
-    // 排序並只取前 10 名
+    const totalConversions = conversions.form + conversions.phone + conversions.line;
+    const convRate = total > 0 ? ((totalConversions / total) * 100).toFixed(2) : 0;
     const topPages = Object.values(pageMap).sort((a, b) => b.count - a.count).slice(0, 10);
-    setStats({ today, week, month, total, sources: sourceMap, topPages });
+
+    setStats({ today, week, month, total, sources: sourceMap, topPages, convRate, convDetails: conversions });
   };
 
   const handleClearStats = async () => {
@@ -95,30 +88,20 @@ const DashboardPanel = () => {
     setIsClearing(true);
     try {
       const snap = await getDocs(collection(db, "page_views"));
-      const deletePromises = [];
-      snap.forEach((document) => {
-        deletePromises.push(deleteDoc(doc(db, "page_views", document.id)));
-      });
-
-      const oldSnap = await getDocs(collection(db, "analytics"));
-      oldSnap.forEach((document) => {
-        deletePromises.push(deleteDoc(doc(db, "analytics", document.id)));
-      });
-
+      const deletePromises = snap.docs.map(document => deleteDoc(doc(db, "page_views", document.id)));
       await Promise.all(deletePromises);
       alert("✅ 數據已成功歸零！");
-      setStats({ today: 0, week: 0, month: 0, total: 0, sources: {}, topPages: [] });
-    } catch (error) {
-      console.error("清空失敗:", error);
-      alert("清空失敗，請檢查網路連線。");
-    }
+      setStats({ today: 0, week: 0, month: 0, total: 0, sources: {}, topPages: [], convRate: 0, convDetails: {form:0, phone:0, line:0} });
+    } catch (error) { console.error(error); }
     setIsClearing(false);
   };
 
-  const StatCard = ({ label, value, color = "text-slate-800" }) => (
+  const StatCard = ({ label, value, color = "text-slate-800", icon: Icon }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
-      <div className="text-slate-400 text-xs font-bold uppercase mb-2">{label}</div>
-      <div className={`text-4xl font-black ${color}`}>{value}</div>
+      <div className="text-slate-400 text-xs font-bold uppercase mb-2 flex items-center gap-1">
+        {Icon && <Icon size={14} />} {label}
+      </div>
+      <div className={`text-3xl md:text-4xl font-black ${color}`}>{value}</div>
     </div>
   );
 
@@ -136,27 +119,50 @@ const DashboardPanel = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+      {/* 第一層：核心流量與轉換率 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+        <StatCard label="總瀏覽次數" value={stats.total} icon={MousePointerClick} />
+        <StatCard label="轉換動作數" value={stats.convDetails.form + stats.convDetails.phone + stats.convDetails.line} icon={Target} color="text-blue-600" />
+        <StatCard label="整體轉換率" value={`${stats.convRate}%`} icon={TrendingUp} color="text-green-600" />
         <StatCard label="今日瀏覽" value={stats.today} color="text-orange-600" />
-        <StatCard label="本週瀏覽" value={stats.week} />
-        <StatCard label="本月瀏覽" value={stats.month} />
-        <StatCard label="歷史總計" value={stats.total} />
       </div>
 
+      {/* 第二層：轉換細節分析 */}
+      <div className="bg-slate-900 text-white p-8 rounded-3xl mb-8 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+        <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-orange-400">
+          <Target size={20}/> 轉換行為詳細分析
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white/5 p-5 rounded-2xl border border-white/10 text-center">
+            <p className="text-slate-400 text-sm mb-1 uppercase tracking-wider">表單預約</p>
+            <p className="text-3xl font-black">{stats.convDetails.form} <span className="text-sm font-normal">組</span></p>
+          </div>
+          <div className="bg-white/5 p-5 rounded-2xl border border-white/10 text-center">
+            <p className="text-slate-400 text-sm mb-1 uppercase tracking-wider">電話撥打</p>
+            <p className="text-3xl font-black">{stats.convDetails.phone} <span className="text-sm font-normal">次</span></p>
+          </div>
+          <div className="bg-white/5 p-5 rounded-2xl border border-white/10 text-center">
+            <p className="text-slate-400 text-sm mb-1 uppercase tracking-wider">LINE 諮詢</p>
+            <p className="text-3xl font-black">{stats.convDetails.line} <span className="text-sm font-normal">次</span></p>
+          </div>
+        </div>
+      </div>
+
+      {/* 第三層：流量來源與熱門頁面 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-            <Globe size={20} className="text-blue-500"/> 流量來源分析
+            <Globe size={20} className="text-blue-500"/> 流量來源分布
           </h3>
           <div className="space-y-5">
-            {Object.keys(stats.sources).length === 0 && <p className="text-slate-400 text-sm">目前尚無數據</p>}
             {Object.entries(stats.sources).sort((a,b)=>b[1]-a[1]).map(([source, count], i) => {
               const percentage = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
               return (
                 <div key={i}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-bold text-slate-700">{source}</span>
-                    <span className="text-sm font-mono text-slate-500">{count} 次 ({percentage}%)</span>
+                  <div className="flex items-center justify-between mb-1 text-sm font-bold">
+                    <span className="text-slate-700">{source}</span>
+                    <span className="text-slate-500">{count} 次 ({percentage}%)</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
                     <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
@@ -172,17 +178,16 @@ const DashboardPanel = () => {
             <TrendingUp size={20} className="text-red-500"/> 熱門頁面排行
           </h3>
           <div className="space-y-5">
-            {stats.topPages.length === 0 && <p className="text-slate-400 text-sm">目前尚無數據</p>}
             {stats.topPages.map((page, i) => {
                const percentage = stats.total > 0 ? Math.round((page.count / stats.total) * 100) : 0;
                return (
                 <div key={i}>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-1 text-sm font-bold">
                     <div className="flex flex-col truncate pr-4">
-                      <span className="text-sm font-bold text-slate-800 truncate">{page.title}</span>
-                      <span className="text-[10px] text-slate-400 uppercase">{page.type}</span>
+                      <span className="text-slate-800 truncate">{page.title}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-normal">{page.type}</span>
                     </div>
-                    <span className="text-sm font-black text-slate-600 whitespace-nowrap">{page.count} 次</span>
+                    <span className="text-slate-600 whitespace-nowrap">{page.count} 次</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-1.5">
                     <div className={`h-1.5 rounded-full ${i === 0 ? 'bg-red-500' : 'bg-slate-800'}`} style={{ width: `${percentage}%` }}></div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   Send, Phone, Facebook, Instagram, MessageCircle, 
   User, Briefcase, Ruler, Building2, Loader2 
@@ -39,6 +39,20 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
     fetchSettings();
   }, []);
 
+  // ★★★ 新增：紀錄轉換行為的通用函數 ★★★
+  const trackConversion = async (type) => {
+    try {
+      await addDoc(collection(db, "page_views"), {
+        path: `/conversion/${type}`,
+        source: type === 'form_submit' ? "表單提交" : "點擊轉換",
+        timestamp: serverTimestamp(),
+        type: "conversion"
+      });
+    } catch (e) {
+      console.error("Conversion tracking failed", e);
+    }
+  };
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   
   const handleSubmit = async (e) => {
@@ -52,21 +66,24 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
       const assignee = schedule[dateString] || "未指派";
       const targetLineId = teamIds[assignee] || "";
 
-      // ★★★ 抓取客戶來源足跡 ★★★
+      // 抓取客戶來源足跡
       const currentUrl = window.location.href;
       const refererSource = document.referrer || "直接輸入網址或書籤";
 
-      // 寫入資料庫 
+      // 1. 寫入資料庫 (客戶名單)
       await addDoc(collection(db, "customers"), { 
         ...form, 
         source: 'homepage_general',
-        clickUrl: currentUrl,       // 存入當前網址 (包含廣告碼)
-        fromReferer: refererSource, // 存入上一站來源
-        createdAt: new Date(),
+        clickUrl: currentUrl,
+        fromReferer: refererSource,
+        createdAt: serverTimestamp(),
         assignedTo: assignee
       });
 
-      // 觸發通知 Webhook
+      // 2. ★★★ 紀錄轉換行為 (表單送出) ★★★
+      await trackConversion('form_submit');
+
+      // 3. 觸發通知 Webhook
       if (settings.notificationWebhook) {
         try {
           await fetch(settings.notificationWebhook, {
@@ -75,8 +92,8 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
             body: JSON.stringify({
               ...form,
               source: 'homepage_general',
-              clickUrl: currentUrl,       // 傳給 Make
-              fromReferer: refererSource, // 傳給 Make
+              clickUrl: currentUrl,
+              fromReferer: refererSource,
               assignedTo: assignee,
               lineUserId: targetLineId, 
               date: dateString
@@ -107,7 +124,6 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
       
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-16 relative z-10">
         
-        {/* 左側：聯絡資訊 */}
         <div className="lg:w-5/12 flex flex-col justify-center">
           <span className="text-orange-500 font-bold tracking-widest uppercase text-sm mb-2 block">Contact Us</span>
           <h2 className="text-4xl md:text-6xl font-black text-white mb-8 leading-tight">{title}</h2>
@@ -116,13 +132,18 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
             無論您是需要尋找特定規格的廠房、評估工業地投資，或是了解最新實價登錄行情，綠芽團隊隨時為您服務。
           </p>
 
+          {/* ★★★ 撥打電話：加入點擊轉換紀錄 ★★★ */}
           <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl flex items-center gap-6 mb-8 hover:border-orange-500/50 transition-colors">
             <div className="bg-orange-600 p-4 rounded-2xl text-white shadow-lg shadow-orange-500/30">
               <Phone size={32} />
             </div>
             <div>
               <p className="text-slate-500 text-sm font-bold uppercase tracking-wider mb-1">Call Now</p>
-              <a href={`tel:${settings.contactPhone}`} className="text-3xl font-black text-white hover:text-orange-500 transition-colors">
+              <a 
+                href={`tel:${settings.contactPhone}`} 
+                onClick={() => trackConversion('phone_call')}
+                className="text-3xl font-black text-white hover:text-orange-500 transition-colors"
+              >
                 {settings.contactPhone}
               </a>
             </div>
@@ -133,12 +154,22 @@ const ContactSection = ({ title = "預約賞屋與諮詢", dark = true }) => {
             <div className="flex gap-4">
                {settings.fbLink && <a href={settings.fbLink} target="_blank" rel="noreferrer" title="Facebook">{renderIcon(settings.iconFB, Facebook, "text-blue-500")}</a>}
                {settings.igLink && <a href={settings.igLink} target="_blank" rel="noreferrer" title="Instagram">{renderIcon(settings.iconIG, Instagram, "text-pink-500")}</a>}
-               {settings.lineLink && <a href={settings.lineLink} target="_blank" rel="noreferrer" title="LINE">{renderIcon(settings.iconLINE, MessageCircle, "text-green-500")}</a>}
+               {/* ★★★ LINE 點擊：加入點擊轉換紀錄 ★★★ */}
+               {settings.lineLink && (
+                 <a 
+                  href={settings.lineLink} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  title="LINE"
+                  onClick={() => trackConversion('line_click')}
+                 >
+                   {renderIcon(settings.iconLINE, MessageCircle, "text-green-500")}
+                 </a>
+               )}
             </div>
           </div>
         </div>
 
-        {/* 右側：線上需求單 */}
         <div className="lg:w-7/12">
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 md:p-12 rounded-[2.5rem] shadow-2xl">
             <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-3">
