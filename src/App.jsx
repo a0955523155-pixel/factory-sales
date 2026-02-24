@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import 'react-quill-new/dist/quill.snow.css'; // 確保前台也能讀取 Quill 的樣式定義
 
 // ★★★ 1. 隱形追蹤器 ★★★
 import AnalyticsTracker from './components/AnalyticsTracker';

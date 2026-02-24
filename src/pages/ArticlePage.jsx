@@ -239,8 +239,15 @@ const ArticlePage = ({ categoryGroup, category, title }) => {
                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-800 shadow-sm flex items-center gap-1"><Calendar size={12} className="text-orange-500"/> {article.date}</div>
                   </div>
                   <div className="p-6 flex flex-col flex-1">
-                    <h3 className="text-xl font-bold text-slate-800 mb-3 line-clamp-2 leading-tight group-hover:text-orange-600 transition">{article.title}</h3>
-                    <p className="text-slate-500 text-sm line-clamp-3 mb-6 flex-1 leading-relaxed">{article.content ? article.content.substring(0, 100).replace(/[#*`]/g, '') : ''}...</p>
+                    <h3 
+  className="text-xl font-bold text-slate-800 mb-3 line-clamp-2 leading-tight group-hover:text-orange-600 transition"
+  dangerouslySetInnerHTML={{ __html: article.title }} 
+/>
+                    <p className="text-slate-500 text-sm line-clamp-3 mb-6 flex-1 leading-relaxed">
+  {article.content 
+    ? article.content.replace(/<[^>]*>?/gm, '').substring(0, 100) 
+    : ''}...
+</p>
                     <span className="text-orange-600 font-bold text-sm flex items-center gap-1 group-hover:gap-2 transition-all mt-auto">閱讀更多 <ArrowRight size={16}/></span>
                   </div>
                 </Link>

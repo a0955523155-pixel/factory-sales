@@ -99,9 +99,11 @@ const ArticleDetail = () => {
             </span>
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-8 leading-tight tracking-tight">
-            {article.title}
-          </h1>
+          <h1 
+  className="text-3xl md:text-5xl font-black text-slate-900 mb-8 leading-tight tracking-tight ql-editor"
+  style={{ padding: 0 }}
+  dangerouslySetInnerHTML={{ __html: article.title }}
+/>
 
           <div className="w-full h-[1px] bg-slate-200 my-8"></div>
         </div>
@@ -119,9 +121,12 @@ const ArticleDetail = () => {
         )}
 
         <div className="max-w-3xl mx-auto px-6">
-          <div className="prose prose-lg prose-slate max-w-none text-slate-700 leading-loose whitespace-pre-line text-justify break-words">
-            {article.content}
-          </div>
+          {/* ★★★ 這裡換成了 dangerouslySetInnerHTML 來解析富文本 ★★★ */}
+          <div 
+  className="prose prose-lg prose-slate max-w-none text-slate-700 leading-loose text-justify break-words ql-editor"
+  style={{ padding: 0 }}
+  dangerouslySetInnerHTML={{ __html: article.content }} 
+/>
           
           <div className="mt-16 pt-8 border-t border-slate-100 text-center">
               <p className="text-slate-400 font-bold text-sm mb-4">覺得這篇文章有幫助嗎？</p>

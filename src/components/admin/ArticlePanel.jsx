@@ -7,6 +7,10 @@ import {
   Trash2, FileText, Sparkles, GripVertical, ChevronUp, ChevronDown, RefreshCcw, Copy, Globe, Image as ImageIcon, MessageSquare, Upload 
 } from 'lucide-react';
 
+// ★★★ 1. 引入 ReactQuill 編輯器與樣式 ★★★
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+
 const AI_ENGINE = {
   pick: (arr) => arr[Math.floor(Math.random() * arr.length)],
   generateTitles: (baseTopic, category) => {
@@ -14,8 +18,9 @@ const AI_ENGINE = {
     if (category === 'news_project') return [`【熱銷捷報】${baseTopic} 詢問度破表`, `${baseTopic} 為什麼這麼紅？`, `震撼登場！${baseTopic} 打造區域新地標`];
     return [`【區域利多】${baseTopic} 建設啟動`, `交通大躍進！${baseTopic} 將帶動周邊發展`, `產業進駐！${baseTopic} 成為南台灣新亮點`];
   },
-  generateContent: (title, category) => `【${title}】\n\n(AI 自動生成草稿)\n隨著市場需求增加，本區域關注度持續上升。詳細內容請補充...`,
-  generateImagePrompt: (title, category) => `High quality architectural photography of ${title}, cinematic lighting, 4k`
+  // 修改生成內容為 HTML 格式
+  generateContent: (title, category) => `<p><strong>【${title.replace(/<[^>]*>?/gm, '')}】</strong></p><p><br></p><p><span style="background-color: rgb(255, 255, 0);"><em>(AI 自動生成草稿)</em></span></p><p>隨著市場需求增加，本區域關注度持續上升。詳細內容請補充...</p>`,
+  generateImagePrompt: (title, category) => `High quality architectural photography of ${title.replace(/<[^>]*>?/gm, '')}, cinematic lighting, 4k`
 };
 
 const ArticlePanel = () => {
@@ -30,6 +35,27 @@ const ArticlePanel = () => {
   
   const dragItem = useRef(); 
   const dragOverItem = useRef();
+
+  // ★★★ 2. 設定編輯器的工具列模組 ★★★
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }], 
+      [{ 'size': ['small', false, 'large', 'huge'] }], 
+      ['bold', 'italic', 'underline', 'strike'], 
+      [{ 'color': [] }, { 'background': [] }], 
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }], 
+      ['clean'] 
+    ]
+  };
+
+  // 標題專用的簡單工具列
+  const titleModules = {
+    toolbar: [
+      ['bold'], 
+      [{ 'size': ['large', 'huge'] }], 
+      ['clean']
+    ]
+  };
 
   const fetchArticles = async () => { 
       try { 
@@ -65,12 +91,22 @@ const ArticlePanel = () => {
       if (!window.confirm("刪除？")) return; await deleteDoc(doc(db, "articles", id)); fetchArticles(); 
   };
 
-  const handleGenerateTitles = () => { setAiTitleSuggestions(AI_ENGINE.generateTitles(articleForm.title || "房地產", articleForm.category)); };
-  const handleGenerateContent = () => { if (!articleForm.title) return alert("請先輸入標題"); setArticleForm(prev => ({ ...prev, content: AI_ENGINE.generateContent(articleForm.title, articleForm.category) })); };
-  const handleGenerateImagePrompt = () => { if (!articleForm.title) return alert("請先輸入標題"); setAiImagePrompt(AI_ENGINE.generateImagePrompt(articleForm.title, articleForm.category)); };
+  const handleGenerateTitles = () => { 
+    // 去除標題中的 HTML 標籤再生成
+    const plainTitle = articleForm.title.replace(/<[^>]*>?/gm, '') || "房地產";
+    setAiTitleSuggestions(AI_ENGINE.generateTitles(plainTitle, articleForm.category)); 
+  };
+  const handleGenerateContent = () => { 
+    if (!articleForm.title) return alert("請先輸入標題"); 
+    setArticleForm(prev => ({ ...prev, content: AI_ENGINE.generateContent(articleForm.title, articleForm.category) })); 
+  };
+  const handleGenerateImagePrompt = () => { 
+    if (!articleForm.title) return alert("請先輸入標題"); 
+    setAiImagePrompt(AI_ENGINE.generateImagePrompt(articleForm.title, articleForm.category)); 
+  };
   
   const handleArticleMaterialSearch = () => {
-    const title = articleForm.title || "房地產";
+    const title = articleForm.title.replace(/<[^>]*>?/gm, '') || "房地產";
     let query = articleForm.category === 'academy' ? `${title} 法規 懶人包 稅制 解釋函令` : articleForm.category === 'news_project' ? `${title} 接待中心 示意圖 房價` : `${title} 建設 完工示意圖 重劃區`;
     window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, '_blank');
     window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank');
@@ -117,7 +153,11 @@ const ArticlePanel = () => {
             {articles.map((a, index) => (
                 <div key={a.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onClick={()=>loadEditArticle(a)} className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}>
                 <div className="flex flex-col gap-1 md:hidden"><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button></div><GripVertical size={16} className="text-slate-300 hidden md:block"/>
-                <div className="flex-1 min-w-0"><span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 ${a.category==='academy'?'bg-purple-500':a.category==='news_project'?'bg-green-500':'bg-blue-500'}`}>{a.category==='academy'?'小學堂':a.category==='news_project'?'建案':'新聞'}</span><div className="font-bold text-slate-800 line-clamp-1 text-sm">{a.title}</div></div>
+                {/* 列表標題使用 dangerouslySetInnerHTML 以正確顯示樣式 */}
+                <div className="flex-1 min-w-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 ${a.category==='academy'?'bg-purple-500':a.category==='news_project'?'bg-green-500':'bg-blue-500'}`}>{a.category==='academy'?'小學堂':a.category==='news_project'?'建案':'新聞'}</span>
+                  <div className="font-bold text-slate-800 line-clamp-1 text-sm" dangerouslySetInnerHTML={{ __html: a.title }} />
+                </div>
                 <button onClick={(e) => {e.stopPropagation(); handleDeleteArticle(a.id);}} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
                 </div>
             ))}
@@ -141,11 +181,18 @@ const ArticlePanel = () => {
                 </div>
                 
                 <div>
-                    <label className={labelStyle}>文章標題</label>
-                    <div className="flex gap-2">
-                    <input value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} className={inputStyle} placeholder="請輸入標題，或點擊右側魔法棒..."/>
-                    <button onClick={handleGenerateTitles} className="bg-purple-600 text-white px-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-1 shrink-0"><Sparkles size={16}/> 靈感</button>
+                    <label className={labelStyle}>文章標題 (支援粗體與大小)</label>
+                    <div className="bg-white rounded-lg border border-slate-300 overflow-hidden mb-2">
+                      <ReactQuill 
+                        theme="snow" 
+                        modules={titleModules}
+                        value={articleForm.title || ''} 
+                        onChange={(val) => setArticleForm({...articleForm, title: val})} 
+                        placeholder="請輸入標題..."
+                      />
                     </div>
+                    <button onClick={handleGenerateTitles} className="bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition flex items-center gap-1 text-xs"><Sparkles size={14}/> AI 靈感標題</button>
+                    
                     {aiTitleSuggestions.length > 0 && (
                     <div className="mt-3 grid grid-cols-1 gap-2 bg-purple-50 p-3 rounded-xl border border-purple-100">
                         <span className="text-xs font-bold text-purple-800 flex items-center gap-1"><Sparkles size={12}/> AI 推薦標題 (點擊帶入)</span>
@@ -164,10 +211,20 @@ const ArticlePanel = () => {
                         <button type="button" onClick={handleGenerateContent} className="text-xs bg-purple-50 text-purple-600 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-purple-100"><MessageSquare size={12}/> 生成文案</button>
                     </div>
                     </div> 
-                    <textarea value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} className={`${inputStyle} h-64 leading-relaxed`} placeholder="輸入內容，或點擊 AI 自動撰寫..."/>
+
+                    <div className="bg-white rounded-lg border border-slate-300 overflow-hidden">
+                      <ReactQuill 
+                        theme="snow" 
+                        modules={quillModules}
+                        value={articleForm.content || ''} 
+                        onChange={(content) => setArticleForm({...articleForm, content: content})} 
+                        style={{ height: '400px', marginBottom: '40px' }} 
+                        placeholder="輸入內容，可使用上方工具列調整粗體、顏色與標題大小..."
+                      />
+                    </div>
                 </div>
 
-                <div>
+                <div className="pt-4 border-t border-slate-100">
                     <label className={labelStyle}>封面圖片 (自動壓浮水印)</label>
                     <div className="mb-2 flex items-center gap-2">
                         <button onClick={handleGenerateImagePrompt} className="text-xs bg-green-50 text-green-700 font-bold px-3 py-1 rounded flex items-center gap-1 hover:bg-green-100 border border-green-200"><ImageIcon size={12}/> 生成中文詠唱詞 (Gemini/Midjourney)</button>
