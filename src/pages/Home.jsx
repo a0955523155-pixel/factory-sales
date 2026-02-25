@@ -139,10 +139,10 @@ setLatestNews(newsList);
             {properties.map((item) => {
               const status = getProjectStatus(item);
               return (
-                <Link to={`/property/${item.basicInfo.title}`} key={item.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 transform hover:-translate-y-2 flex flex-col h-full relative">
+                <Link to={`/property/${item.id}`} key={item.id} className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition duration-500 transform hover:-translate-y-2 flex flex-col h-full relative">
                   <div className="relative h-72 overflow-hidden bg-slate-200">
                     {item.basicInfo.thumb ? (
-                      <img src={item.basicInfo.thumb} alt={item.basicInfo.title} className={`w-full h-full object-cover transition duration-700 ${status.type === 'soldout' ? 'grayscale opacity-50' : 'group-hover:scale-110'}`} />
+                      <img src={item.basicInfo.thumb} alt={item.id} className={`w-full h-full object-cover transition duration-700 ${status.type === 'soldout' ? 'grayscale opacity-50' : 'group-hover:scale-110'}`} />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">NO IMAGE</div>
                     )}
@@ -154,7 +154,7 @@ setLatestNews(newsList);
                     {status.type === 'selling' && <div className="absolute top-4 right-4 bg-orange-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-lg flex items-center gap-1 animate-pulse"><Flame size={14} fill="currentColor"/> 剩餘 {status.count} 戶</div>}
 
                     <div className="absolute bottom-6 left-6 text-white">
-                      <h3 className="text-2xl font-bold leading-tight mb-1 drop-shadow-md">{item.basicInfo.title}</h3>
+                      <h3 className="text-2xl font-bold leading-tight mb-1 drop-shadow-md">{item.id}</h3>
                       <p className="text-sm opacity-90 flex items-center gap-1"><MapPin size={14}/> {item.basicInfo.city} {item.basicInfo.transactionType || '出售'}</p>
                     </div>
                   </div>
@@ -213,11 +213,9 @@ setLatestNews(newsList);
       </span>
       
       {/* 標題：解析 HTML 樣式 */}
-      <h3 
-        className="text-lg font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition ql-editor line-clamp-2"
-        style={{ padding: 0, minHeight: 'auto' }}
-        dangerouslySetInnerHTML={{ __html: news.title }} 
-      />
+<h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition line-clamp-2">
+  {news.title ? news.title.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&') : '無標題'}
+</h3>
       
       {/* 內文摘要：過濾 HTML 標籤 */}
       <p className="text-slate-500 text-sm mb-4 line-clamp-2 leading-relaxed">
