@@ -419,9 +419,9 @@ const PropertyDetail = () => {
     fetch(); 
   }, [id]);
 
-const handleShare = () => {
-    // 改成製造專屬的分享網址替身 (/share/...)
-    const shareUrl = `${window.location.origin}/share/${encodeURIComponent(info.title)}`;
+  // ★★★ 核心修改：讓分享網址變成 /share/ID 並加上時間戳 ★★★
+  const handleShare = () => {
+    const shareUrl = `${window.location.origin}/share/${id}?v=${new Date().getTime()}`;
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -444,18 +444,11 @@ const handleShare = () => {
   return (
     <div className="font-sans min-h-screen text-slate-900 bg-slate-50 pb-24 md:pb-0">
       
-      {/* ★★★ SEO 設定 (物件內頁強化版) ★★★ */}
       <Helmet>
-        {/* 動態網頁標題 */}
         <title>{`${info.title} | 綠芽團隊 - 高雄屏東工業地產`}</title>
-
-        {/* 動態 Google 搜尋摘要 */}
         <meta name="description" content={info.description ? info.description.substring(0, 120) + '...' : `綠芽團隊嚴選推薦：位於${info.city || '南台灣'}的優質${info.propertyType || '廠房物件'}。提供最專業的實價登錄解析與帶看服務，立即了解 ${info.title} 的詳細價格與坪數資訊！`} />
-
-        {/* 智慧組合關鍵字 */}
         <meta name="keywords" content={`綠芽團隊, ${info.city || ''}${info.propertyType || ''}, ${info.usageType || ''}, ${info.transactionType || ''}, 實價登錄, 高雄廠房, 屏東廠房`} />
-
-        {/* LINE / FB 分享預覽設定 */}
+        
         <meta property="og:title" content={`${info.title} | 綠芽團隊精選`} />
         <meta property="og:description" content={info.description ? info.description.substring(0, 120) + '...' : `${info.city || ''} ${info.propertyType || ''} ${info.transactionType || ''} | 售價 ${info.price}`} />
         <meta property="og:type" content="website" />
