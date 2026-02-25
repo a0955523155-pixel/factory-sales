@@ -419,9 +419,11 @@ const PropertyDetail = () => {
     fetch(); 
   }, [id]);
 
-  // ★★★ 核心修改：讓分享網址變成 /share/ID 並加上時間戳 ★★★
+  // ★★★ 核心修改：這段已經改為自動抓取「中文案名 (info.title)」，並使用 /share/ 通道 ★★★
   const handleShare = () => {
-    const shareUrl = `${window.location.origin}/share/${id}?v=${new Date().getTime()}`;
+    if (!data) return;
+    const titleToShare = data.basicInfo?.title || decodeURIComponent(id);
+    const shareUrl = `${window.location.origin}/share/${encodeURIComponent(titleToShare)}?v=${new Date().getTime()}`;
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -482,9 +484,11 @@ const PropertyDetail = () => {
 
         <div className="relative z-10 h-full flex flex-col justify-end pb-24 px-6 max-w-7xl mx-auto pointer-events-none">
           <Link to="/works" className="absolute top-28 left-6 text-white/80 flex items-center gap-2 hover:text-orange-400 bg-white/10 px-6 py-3 rounded-full backdrop-blur border border-white/10 font-bold transition pointer-events-auto"><ArrowLeft size={20}/> 回經典作品</Link>
+          
+          {/* ★★★ 分享按鈕 ★★★ */}
           <button onClick={handleShare} className={`absolute top-28 right-6 text-white/80 flex items-center gap-2 hover:text-orange-400 px-6 py-3 rounded-full backdrop-blur border font-bold transition pointer-events-auto ${copied ? 'bg-green-600/80 border-green-500 text-white' : 'bg-white/10 border-white/10'}`}>
              {copied ? <Check size={20}/> : <Share2 size={20}/>}
-             {copied ? "已複製連結" : "分享案場"}
+             {copied ? "已複製專屬連結" : "分享案場"}
           </button>
 
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="md:w-3/4 pointer-events-auto">
