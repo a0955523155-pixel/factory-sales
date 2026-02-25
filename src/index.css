@@ -48,3 +48,17 @@ body {
   0% { transform: translateY(-100%); }
   100% { transform: translateY(100%); }
 }
+/* --- 修復富文本編輯器的排版與間距 --- */
+.ql-editor {
+  padding: 0 !important;
+}
+
+.ql-editor p {
+  margin-bottom: 1.5em !important; /* 每個段落底部的間距 */
+  line-height: 1.8 !important;     /* 文字的行高，讓閱讀更舒服 */
+}
+
+/* 確保空行 (<p><br></p>) 能正確顯示高度 */
+.ql-editor p br {
+  display: block;
+}

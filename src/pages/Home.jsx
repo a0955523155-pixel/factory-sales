@@ -17,6 +17,7 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        
         const propRef = collection(db, "properties");
         let q = query(propRef, where("basicInfo.showOnHome", "==", true), limit(6)); 
         let propSnap = await getDocs(q);
