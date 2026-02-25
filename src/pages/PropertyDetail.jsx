@@ -444,18 +444,21 @@ const PropertyDetail = () => {
       
       {/* ★★★ SEO 設定 (物件內頁強化版) ★★★ */}
       <Helmet>
-        {/* 自動組合：大成工業城｜高雄仁武 廠房 出售｜綠芽團隊 */}
-        <title>{`${info.title}｜${info.city || '高屏地區'} ${info.propertyType || '工業地/廠房'} ${info.transactionType || '買賣'}｜綠芽團隊`}</title>
-        
-        {/* 描述自動塞入地區與類型，增加被搜尋到的機率 */}
-        <meta name="description" content={info.description ? info.description.substring(0, 150) : `綠芽團隊嚴選推薦：位於${info.city || '南台灣'}的優質${info.propertyType || '廠房物件'}。提供最專業的實價登錄解析與帶看服務，立即了解 ${info.title} 的詳細價格與坪數資訊！`} />
-        
-        {/* 這些是給 Facebook / LINE 分享時用的漂亮卡片資訊 */}
-        <meta property="og:title" content={`${info.title}｜綠芽團隊精選`} />
-        <meta property="og:description" content={`${info.city || ''} ${info.propertyType || ''} ${info.transactionType || ''} | 售價 ${info.price}`} />
-        <meta property="og:image" content={info.thumb} />
-        <meta property="og:url" content={window.location.href} />
+        {/* 動態網頁標題 */}
+        <title>{`${info.title} | 綠芽團隊 - 高雄屏東工業地產`}</title>
+
+        {/* 動態 Google 搜尋摘要 */}
+        <meta name="description" content={info.description ? info.description.substring(0, 120) + '...' : `綠芽團隊嚴選推薦：位於${info.city || '南台灣'}的優質${info.propertyType || '廠房物件'}。提供最專業的實價登錄解析與帶看服務，立即了解 ${info.title} 的詳細價格與坪數資訊！`} />
+
+        {/* 智慧組合關鍵字 */}
+        <meta name="keywords" content={`綠芽團隊, ${info.city || ''}${info.propertyType || ''}, ${info.usageType || ''}, ${info.transactionType || ''}, 實價登錄, 高雄廠房, 屏東廠房`} />
+
+        {/* LINE / FB 分享預覽設定 */}
+        <meta property="og:title" content={`${info.title} | 綠芽團隊精選`} />
+        <meta property="og:description" content={info.description ? info.description.substring(0, 120) + '...' : `${info.city || ''} ${info.propertyType || ''} ${info.transactionType || ''} | 售價 ${info.price}`} />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+        {info.thumb && <meta property="og:image" content={info.thumb} />}
       </Helmet>
 
       <Navbar /> 

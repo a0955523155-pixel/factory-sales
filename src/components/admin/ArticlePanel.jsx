@@ -2,12 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { safeStr, compressImage } from '../../utils/adminHelpers';
-// FIX: 加入 Upload
 import { 
   Trash2, FileText, Sparkles, GripVertical, ChevronUp, ChevronDown, RefreshCcw, Copy, Globe, Image as ImageIcon, MessageSquare, Upload 
 } from 'lucide-react';
 
-// ★★★ 1. 引入 ReactQuill 編輯器與樣式 ★★★
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -18,7 +16,6 @@ const AI_ENGINE = {
     if (category === 'news_project') return [`【熱銷捷報】${baseTopic} 詢問度破表`, `${baseTopic} 為什麼這麼紅？`, `震撼登場！${baseTopic} 打造區域新地標`];
     return [`【區域利多】${baseTopic} 建設啟動`, `交通大躍進！${baseTopic} 將帶動周邊發展`, `產業進駐！${baseTopic} 成為南台灣新亮點`];
   },
-  // 修改生成內容為 HTML 格式
   generateContent: (title, category) => `<p><strong>【${title.replace(/<[^>]*>?/gm, '')}】</strong></p><p><br></p><p><span style="background-color: rgb(255, 255, 0);"><em>(AI 自動生成草稿)</em></span></p><p>隨著市場需求增加，本區域關注度持續上升。詳細內容請補充...</p>`,
   generateImagePrompt: (title, category) => `High quality architectural photography of ${title.replace(/<[^>]*>?/gm, '')}, cinematic lighting, 4k`
 };
@@ -36,7 +33,6 @@ const ArticlePanel = () => {
   const dragItem = useRef(); 
   const dragOverItem = useRef();
 
-  // ★★★ 2. 設定編輯器的工具列模組 ★★★
   const quillModules = {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }], 
@@ -48,7 +44,6 @@ const ArticlePanel = () => {
     ]
   };
 
-  // 標題專用的簡單工具列
   const titleModules = {
     toolbar: [
       ['bold'], 
@@ -76,8 +71,13 @@ const ArticlePanel = () => {
       setCompressing(false); 
   };
 
+  // ★★★ 修復 1：載入時使用乾淨底板覆蓋，避免狀態殘留 ★★★
   const loadEditArticle = (item) => { 
-      setEditArticleId(item.id); setArticleForm({ ...item }); setAiTitleSuggestions([]); setAiImagePrompt(''); 
+      setEditArticleId(item.id); 
+      const cleanForm = { category: 'news_local', title: '', content: '', date: '', image: '' };
+      setArticleForm({ ...cleanForm, ...item }); 
+      setAiTitleSuggestions([]); 
+      setAiImagePrompt(''); 
   };
 
   const handleArticleSubmit = async (e) => { 
@@ -92,7 +92,6 @@ const ArticlePanel = () => {
   };
 
   const handleGenerateTitles = () => { 
-    // 去除標題中的 HTML 標籤再生成
     const plainTitle = articleForm.title.replace(/<[^>]*>?/gm, '') || "房地產";
     setAiTitleSuggestions(AI_ENGINE.generateTitles(plainTitle, articleForm.category)); 
   };
@@ -153,7 +152,6 @@ const ArticlePanel = () => {
             {articles.map((a, index) => (
                 <div key={a.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onClick={()=>loadEditArticle(a)} className={`p-3 border mb-2 rounded-xl cursor-grab active:cursor-grabbing transition relative group flex items-center gap-3 ${editArticleId===a.id ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-slate-300'}`}>
                 <div className="flex flex-col gap-1 md:hidden"><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'up'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronUp size={12}/></button><button onClick={(e) => { e.stopPropagation(); moveArticle(index, 'down'); }} className="p-1 bg-slate-100 rounded hover:bg-slate-200"><ChevronDown size={12}/></button></div><GripVertical size={16} className="text-slate-300 hidden md:block"/>
-                {/* 列表標題使用 dangerouslySetInnerHTML 以正確顯示樣式 */}
                 <div className="flex-1 min-w-0">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full text-white font-bold inline-block mb-1 ${a.category==='academy'?'bg-purple-500':a.category==='news_project'?'bg-green-500':'bg-blue-500'}`}>{a.category==='academy'?'小學堂':a.category==='news_project'?'建案':'新聞'}</span>
                   <div className="font-bold text-slate-800 line-clamp-1 text-sm" dangerouslySetInnerHTML={{ __html: a.title }} />
@@ -167,17 +165,21 @@ const ArticlePanel = () => {
         <div className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50">
             <div className="max-w-3xl mx-auto">
                 <div className="flex justify-between items-center mb-8"><h2 className="text-2xl md:text-3xl font-black">{editArticleId ? '編輯文章' : '新增文章'}</h2><button onClick={handleArticleSubmit} disabled={loading} className="bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-orange-500 shadow-lg transition text-sm">{loading ? "發布中..." : "確認發布"}</button></div>
-                <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                
+                {/* ★★★ 修復 2：加上 key={editArticleId || 'new'} 強迫切換文章時銷毀重建表單 ★★★ */}
+                <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6" key={editArticleId || 'new'}>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className={labelStyle}>文章分類</label>
-                        <select value={articleForm.category} onChange={e=>setArticleForm({...articleForm, category: e.target.value})} className={inputStyle}>
+                        {/* ★★★ 修復 3：所有 onChange 改用 prev => (...) 避免閉包陷阱 ★★★ */}
+                        <select value={articleForm.category || 'news_local'} onChange={e=>setArticleForm(prev=>({...prev, category: e.target.value}))} className={inputStyle}>
                             <option value="news_local">最新消息-地方新聞</option>
                             <option value="news_project">最新消息-建案新訊</option>
                             <option value="academy">房地產小學堂 (QA)</option>
                         </select>
                     </div>
-                    <div><label className={labelStyle}>發布日期</label><input type="date" value={articleForm.date} onChange={e=>setArticleForm({...articleForm, date: e.target.value})} className={inputStyle}/></div>
+                    <div><label className={labelStyle}>發布日期</label><input type="date" value={articleForm.date || ''} onChange={e=>setArticleForm(prev=>({...prev, date: e.target.value}))} className={inputStyle}/></div>
                 </div>
                 
                 <div>
@@ -187,7 +189,7 @@ const ArticlePanel = () => {
                         theme="snow" 
                         modules={titleModules}
                         value={articleForm.title || ''} 
-                        onChange={(val) => setArticleForm({...articleForm, title: val})} 
+                        onChange={(val) => setArticleForm(prev=>({...prev, title: val}))} 
                         placeholder="請輸入標題..."
                       />
                     </div>
@@ -197,7 +199,7 @@ const ArticlePanel = () => {
                     <div className="mt-3 grid grid-cols-1 gap-2 bg-purple-50 p-3 rounded-xl border border-purple-100">
                         <span className="text-xs font-bold text-purple-800 flex items-center gap-1"><Sparkles size={12}/> AI 推薦標題 (點擊帶入)</span>
                         {aiTitleSuggestions.map((t, i) => (
-                        <button key={i} onClick={() => { setArticleForm({...articleForm, title: t}); setAiTitleSuggestions([]); }} className="text-left text-sm text-slate-700 hover:text-purple-700 hover:bg-white p-2 rounded transition border border-transparent hover:border-purple-200">{t}</button>
+                        <button key={i} onClick={() => { setArticleForm(prev=>({...prev, title: t})); setAiTitleSuggestions([]); }} className="text-left text-sm text-slate-700 hover:text-purple-700 hover:bg-white p-2 rounded transition border border-transparent hover:border-purple-200">{t}</button>
                         ))}
                     </div>
                     )}
@@ -217,7 +219,7 @@ const ArticlePanel = () => {
                         theme="snow" 
                         modules={quillModules}
                         value={articleForm.content || ''} 
-                        onChange={(content) => setArticleForm({...articleForm, content: content})} 
+                        onChange={(content) => setArticleForm(prev=>({...prev, content: content}))} 
                         style={{ height: '400px', marginBottom: '40px' }} 
                         placeholder="輸入內容，可使用上方工具列調整粗體、顏色與標題大小..."
                       />
@@ -235,7 +237,7 @@ const ArticlePanel = () => {
                         <button onClick={()=>{navigator.clipboard.writeText(aiImagePrompt); alert("已複製！");}} className="absolute top-2 right-2 bg-white/10 p-1.5 rounded hover:bg-white/20 text-white"><Copy size={12}/></button>
                     </div>
                     )}
-                    <div className="flex items-center gap-4"><label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-bold text-slate-600 transition"><Upload size={16}/> 上傳圖片 <input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>setArticleForm({...articleForm, image: url}))}/></label>{articleForm.image && <img src={articleForm.image} className="h-20 w-32 object-cover rounded-lg border border-slate-200 shadow-sm"/>}</div>
+                    <div className="flex items-center gap-4"><label className="cursor-pointer bg-slate-100 hover:bg-slate-200 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-bold text-slate-600 transition"><Upload size={16}/> 上傳圖片 <input type="file" className="hidden" onChange={e=>handleUpload(e, (url)=>setArticleForm(prev=>({...prev, image: url})))}/></label>{articleForm.image && <img src={articleForm.image} className="h-20 w-32 object-cover rounded-lg border border-slate-200 shadow-sm"/>}</div>
                 </div>
                 </div>
             </div>
