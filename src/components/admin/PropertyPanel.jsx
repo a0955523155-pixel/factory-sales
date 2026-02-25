@@ -143,7 +143,6 @@ const PropertyPanel = () => {
   
   const toggleZone = (zone) => { setCollapsedZones(prev => ({ ...prev, [zone]: !prev[zone] })); };
 
-  // Helper function
   const getDisplayTitle = (p) => {
     if (p.basicInfo && p.basicInfo.title) return p.basicInfo.title;
     if (p.title) return p.title;
@@ -157,51 +156,58 @@ const PropertyPanel = () => {
     return `${price} 萬`;
   };
 
-  // ★★★ 新增：取得封面圖的 Helper ★★★
   const getThumbnail = (p) => {
     return p.basicInfo?.thumb || p.thumb || "";
   };
 
   return (
-    <>
-      {/* 行動版上方快速選單 */}
-      <div className="lg:hidden p-2 bg-white border-b overflow-x-auto flex gap-2">
-        <button onClick={resetForm} className="bg-orange-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs shrink-0 flex items-center gap-1"><Plus size={14}/> 新增</button>
-        {properties.map(p => (
-            <button key={p.id} onClick={() => loadEdit(p)} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs font-bold shrink-0 whitespace-nowrap ${editId === p.id ? 'bg-orange-50 border-orange-500 text-orange-600' : 'bg-slate-50 border-slate-200'}`}>
-                {getThumbnail(p) && <img src={getThumbnail(p)} alt="" className="w-5 h-5 rounded object-cover"/>}
-                {getDisplayTitle(p).substring(0, 6)}...
-            </button>
-        ))}
+    // ★★★ 修正點 1：最外層改為 flex-col 並控制高度，解決捲軸破版問題 ★★★
+    <div className="flex flex-col h-full md:h-[calc(100vh-80px)] relative overflow-hidden bg-slate-50">
+      
+      {/* ★★★ 修正點 2：將「儲存列」與「手機版案場列」合併成一個完整的置頂區塊 ★★★ */}
+      <div className="shrink-0 sticky top-0 z-30 flex flex-col w-full shadow-sm bg-white">
+        
+        {/* 第一列：標題與儲存專案按鈕 */}
+        <div className="p-3 md:p-4 border-b flex justify-between items-center px-4 md:px-8">
+          <div className="flex items-center gap-2">
+              <h1 className="font-bold text-lg md:text-xl text-slate-800">{editId ? '編輯模式' : '新增模式'}</h1>
+              {loading && <Loader2 className="animate-spin text-orange-500" size={16}/>}
+          </div>
+          <div className="flex gap-2">
+              <button onClick={fetchProperties} className="hidden md:flex border border-slate-200 text-slate-600 px-3 py-2 text-sm font-bold hover:bg-slate-50 rounded-xl transition items-center gap-2">
+                  <History size={14}/> 重整列表
+              </button>
+              <button onClick={handleSubmit} disabled={loading || compressing} className="bg-orange-600 text-white px-5 py-2 text-sm font-bold hover:bg-orange-500 rounded-xl shadow-lg shadow-orange-200 transition shrink-0">
+                  {compressing ? '處理中...' : loading ? '存檔中...' : '儲存專案'}
+              </button>
+          </div>
+        </div>
+
+        {/* 第二列：手機版專用水平列表 (放在儲存按鈕正下方，滑動時不重疊) */}
+        <div className="md:hidden p-2 bg-slate-50 border-b overflow-x-auto flex gap-2 w-full items-center shadow-inner">
+          <button onClick={resetForm} className="bg-orange-500 text-white px-3 py-1.5 rounded-lg font-bold text-xs shrink-0 flex items-center gap-1 shadow-sm"><Plus size={14}/> 新增</button>
+          {properties.map(p => (
+              <button key={p.id} onClick={() => loadEdit(p)} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs font-bold shrink-0 whitespace-nowrap transition shadow-sm ${editId === p.id ? 'bg-orange-50 border-orange-500 text-orange-600 ring-1 ring-orange-200' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}>
+                  {getThumbnail(p) && <img src={getThumbnail(p)} alt="" className="w-5 h-5 rounded object-cover border border-slate-200"/>}
+                  {getDisplayTitle(p).substring(0, 8)}...
+              </button>
+          ))}
+        </div>
       </div>
 
-      <div className="p-4 border-b bg-white flex justify-between items-center px-4 md:px-8 sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-2">
-            <h1 className="font-bold text-lg md:text-xl">{editId ? '編輯模式' : '新增模式'}</h1>
-            {loading && <Loader2 className="animate-spin text-slate-400" size={16}/>}
-        </div>
-        <div className="flex gap-2">
-            <button onClick={fetchProperties} className="hidden md:flex bg-white border border-slate-200 text-slate-600 px-3 py-2 text-sm font-bold hover:bg-slate-50 rounded-xl transition items-center gap-2">
-                <History size={14}/> 重整列表
-            </button>
-            <button onClick={handleSubmit} disabled={loading || compressing} className="bg-orange-600 text-white px-6 py-2 text-sm font-bold hover:bg-orange-500 rounded-xl shadow-lg shadow-orange-200 transition">
-                {compressing ? '圖片處理中...' : loading ? '存檔中...' : '儲存專案'}
-            </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row h-[calc(100vh-80px)]">
-        {/* 左側列表 */}
-        <div className="hidden md:block w-64 bg-slate-50 border-r border-slate-200 overflow-y-auto p-4 shrink-0">
-            <button onClick={resetForm} className="w-full bg-white border-2 border-dashed border-slate-300 text-slate-500 py-3 rounded-xl font-bold hover:border-orange-500 hover:text-orange-500 transition mb-4 flex justify-center items-center gap-2">
+      {/* ★★★ 修正點 3：表單與左側列表區域 ★★★ */}
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        
+        {/* 電腦版專用：左側直式列表 */}
+        <div className="hidden md:block w-64 bg-slate-50 border-r border-slate-200 overflow-y-auto p-4 shrink-0 h-full">
+            <button onClick={resetForm} className="w-full bg-white border-2 border-dashed border-slate-300 text-slate-500 py-3 rounded-xl font-bold hover:border-orange-500 hover:text-orange-500 transition mb-4 flex justify-center items-center gap-2 shadow-sm">
                 <Plus size={16}/> 新增案件
             </button>
-            <div className="space-y-2">
+            <div className="space-y-2 pb-20">
                 {properties.map(p => (
                     <div key={p.id} onClick={() => loadEdit(p)} className={`p-3 rounded-xl cursor-pointer border transition hover:shadow-md group ${editId === p.id ? 'bg-white border-orange-500 shadow-sm ring-1 ring-orange-200' : 'bg-white border-slate-200 hover:border-orange-300'}`}>
-                        {/* ★★★ 這裡補上了封面圖顯示 ★★★ */}
                         {getThumbnail(p) ? (
-                            <img src={getThumbnail(p)} alt="cover" className="w-full h-24 object-cover rounded-lg mb-2 bg-slate-100"/>
+                            <img src={getThumbnail(p)} alt="cover" className="w-full h-24 object-cover rounded-lg mb-2 bg-slate-100 border border-slate-100"/>
                         ) : (
                             <div className="w-full h-24 bg-slate-100 rounded-lg mb-2 flex items-center justify-center text-slate-300">
                                 <ImageIcon size={24}/>
@@ -209,12 +215,10 @@ const PropertyPanel = () => {
                         )}
                         <div className="font-bold text-sm text-slate-800 truncate group-hover:text-orange-600 transition">{getDisplayTitle(p)}</div>
                         <div className="flex justify-between mt-1">
-                            <span className="text-xs text-slate-400 bg-slate-100 px-1.5 rounded">
+                            <span className="text-xs text-slate-400 bg-slate-100 px-1.5 rounded border border-slate-200">
                                 {(p.basicInfo?.city || p.city || "未分類").substring(0,2)}
                             </span>
-                            <span className="text-xs text-orange-600 font-bold">
-                                {getDisplayPrice(p)}
-                            </span>
+                            <span className="text-xs text-orange-600 font-bold">{getDisplayPrice(p)}</span>
                         </div>
                     </div>
                 ))}
@@ -225,8 +229,11 @@ const PropertyPanel = () => {
         </div>
 
         {/* 右側表單內容 */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full bg-slate-50/30">
-            <div className="max-w-4xl mx-auto space-y-10 pb-20">
+        {/* ★★★ 修正點 4：加上 pb-32，確保手機版滑到底部時不會被螢幕邊緣吃掉 ★★★ */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full bg-slate-50 pb-32 md:pb-12">
+            <div className="max-w-4xl mx-auto space-y-10">
+                
+                {/* 基本資料 */}
                 <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="font-black text-lg border-l-4 border-orange-500 pl-3 mb-6">基本資料</h3>
                 <div className="mb-6 p-4 bg-orange-50 border border-orange-100 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -254,34 +261,28 @@ const PropertyPanel = () => {
                     <div><label className={labelStyle}>經紀人姓名</label><input value={formData.agentName} onChange={e=>setFormData({...formData, agentName:e.target.value})} className={inputStyle} placeholder="例如：王小明"/></div>
                     <div><label className={labelStyle}>LINE ID</label><input value={formData.lineId} onChange={e=>setFormData({...formData, lineId:e.target.value})} className={inputStyle} placeholder="例如：wang123"/></div>
                     
-                    {/* ★★★ 修正：LINE QR 圖片預覽 ★★★ */}
                     <div>
                         <label className={labelStyle}>LINE QR 圖片</label>
                         {formData.lineQr && <img src={formData.lineQr} alt="QR" className="w-20 h-20 object-contain mb-2 border rounded"/>}
                         <input type="file" onChange={e=>handleUpload(e, (url)=>setFormData({...formData, lineQr: url}))} className="text-xs"/>
                     </div>
                     
-                    {/* ★★★ 修正：封面圖預覽 (讓您知道目前有圖) ★★★ */}
                     <div className="col-span-1 md:col-span-2">
                         <label className={labelStyle}>封面圖</label>
                         {formData.thumb ? (
                              <div className="relative w-full h-48 mb-2 group">
                                 <img src={formData.thumb} alt="cover" className="w-full h-full object-cover rounded-lg border border-slate-200"/>
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs">
-                                    目前封面圖
-                                </div>
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs">目前封面圖</div>
                              </div>
                         ) : (
-                            <div className="w-full h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400 text-xs">
-                                尚未上傳封面
-                            </div>
+                            <div className="w-full h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg mb-2 flex items-center justify-center text-slate-400 text-xs">尚未上傳封面</div>
                         )}
                         <input type="file" onChange={e=>handleUpload(e, (url)=>setFormData({...formData, thumb: url}))} className="text-xs w-full"/>
                     </div>
                 </div>
                 </section>
                 
-                {/* 以下區塊維持不變 (規格、環境、進度、銷控表) */}
+                {/* 規格 & 特色 */}
                 <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex justify-between mb-6">
                     <h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">規格 & 特色</h3>
@@ -306,6 +307,7 @@ const PropertyPanel = () => {
                 </div>
                 </section>
 
+                {/* 周遭環境 */}
                 <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex justify-between mb-4">
                     <h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">周遭環境 (新聞)</h3>
@@ -331,6 +333,7 @@ const PropertyPanel = () => {
                 ))}
                 </section>
 
+                {/* 工程進度 */}
                 <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex justify-between mb-4">
                     <h3 className="font-black text-lg border-l-4 border-orange-500 pl-3">工程進度</h3>
@@ -351,6 +354,7 @@ const PropertyPanel = () => {
                 ))}
                 </section>
                 
+                {/* 戶別銷控表 */}
                 <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex flex-col gap-4 mb-6">
                     <div className="flex justify-between items-center">
@@ -407,7 +411,7 @@ const PropertyPanel = () => {
             </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
