@@ -419,8 +419,10 @@ const PropertyDetail = () => {
     fetch(); 
   }, [id]);
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
+const handleShare = () => {
+    // 改成製造專屬的分享網址替身 (/share/...)
+    const shareUrl = `${window.location.origin}/share/${encodeURIComponent(info.title)}`;
+    navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
