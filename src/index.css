@@ -2,11 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 新增這段：讓手機版字體與畫面「等比例自動縮放」 */
 @media (max-width: 768px) {
   html {
-    /* 使用 clamp：字體最小不低於 12px，隨螢幕寬度 (vw) 縮放，最大不超過 16px */
-    font-size: clamp(12px, 3.8vw, 16px);
+    /* 1. 把 3.8vw 調降成 3.2vw，最大值壓在 15px */
+    font-size: clamp(12px, 3.2vw, 15px);
+  }
+
+  /* 2. 專門針對後台 ReactQuill 產生的文章內容，強制再縮小並增加行距，提升閱讀舒適度 */
+  /* (假設您的文章有包在一個 div 裡面，或是帶有相關標籤) */
+  .prose p, 
+  .prose span,
+  .ql-editor p,
+  .ql-editor span {
+    font-size: 0.9rem !important; /* 讓文章字體比全域再小 10% */
+    line-height: 1.7 !important;  /* 拉開行距，減少大字體的擁擠感 */
   }
 }
 body {
