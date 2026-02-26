@@ -2,11 +2,9 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getAuth } from "firebase/auth"; // 引入 Auth
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAkXR8wYN07Gu9kH_nI42xsFlH0kTlrYRU",
   authDomain: "web-design-6ff20.firebaseapp.com",
@@ -17,9 +15,19 @@ const firebaseConfig = {
   measurementId: "G-HKRJYGFT4B"
 };
 
-// Initialize Firebase
+// ==========================================
+// 1. 先讓 app 誕生！(這行一定要在最前面)
+// ==========================================
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app); // 資料庫
+
+// ==========================================
+// 2. 誕生之後，才能把 app 交給資料庫、儲存桶跟驗證機制！
+// ==========================================
+const auth = getAuth(app);       // 驗證
+const db = getFirestore(app);    // 資料庫
 const storage = getStorage(app); // 圖片儲存
 
-export { db, storage };
+// ==========================================
+// 3. 把他們三個都匯出，讓別的檔案可以使用
+// ==========================================
+export { db, storage, auth };
