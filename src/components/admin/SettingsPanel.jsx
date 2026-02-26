@@ -1,63 +1,155 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase';
+import { db, storage } from '../../firebase'; 
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { safeStr, compressImage } from '../../utils/adminHelpers';
-import { Bell } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Save, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 const SettingsPanel = () => {
-  const [globalSettings, setGlobalSettings] = useState({ 
-    siteName: "Factory Pro", heroTitleCN: "", heroTitleEN: "", 
-    contactPhone: "", fbLink: "", igLink: "", lineLink: "", 
-    iconFB: "", iconIG: "", iconLINE: "",
-    notificationWebhook: "" // 新增欄位
+  const [settings, setSettings] = useState({
+    heroTitleCN: '未來工廠',
+    heroTitleEN: 'FUTURE FACTORY',
+    heroBgUrl: '' // 新增這行：用來儲存首頁背景圖的網址
   });
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
+  // 1. 畫面載入時，去資料庫抓目前的設定
   useEffect(() => {
-    const fetchGlobalSettings = async () => { try { const docSnap = await getDoc(doc(db, "settings", "global")); if (docSnap.exists()) setGlobalSettings(docSnap.data()); } catch (e) {} };
-    fetchGlobalSettings();
+    const fetchSettings = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'global');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setSettings(prev => ({ ...prev, ...docSnap.data() }));
+        }
+      } catch (error) {
+        console.error("讀取設定失敗:", error);
+      }
+    };
+    fetchSettings();
   }, []);
 
-  const handleUpload = async (e, callback) => { 
-      const file = e.target.files[0]; if (!file) return; 
-      try { const compressed = await compressImage(file); callback(compressed); } catch (e) {} 
+  // 2. 處理圖片上傳到 Firebase Storage
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 建議檢查檔案大小 (限制在 2MB 以內最佳)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("圖片檔案過大，請壓縮至 2MB 以內以確保前台載入速度！");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // 在 Storage 中建立專屬資料夾與檔名
+      const fileRef = ref(storage, `settings/hero-bg-${Date.now()}.jpg`);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      
+      // 更新本機狀態 (還沒存進資料庫喔)
+      setSettings({ ...settings, heroBgUrl: url });
+      alert('圖片上傳成功！請記得點擊最下方的「儲存全域設定」來生效。');
+    } catch (error) {
+      console.error('上傳圖片失敗:', error);
+      alert('上傳失敗，請檢查網路狀態。');
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleSaveSettings = async () => { 
-      setLoading(true); await setDoc(doc(db, "settings", "global"), globalSettings); 
-      alert("已更新"); setLoading(false); 
+  // 3. 把所有設定存進 Firestore 資料庫
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, 'settings', 'global'), settings, { merge: true });
+      alert('設定已成功儲存！前台首頁已經更新。');
+    } catch (error) {
+      console.error('儲存設定失敗:', error);
+      alert('儲存失敗，請確認您的管理員權限。');
+    } finally {
+      setSaving(false);
+    }
   };
-
-  const inputStyle = "w-full bg-white border border-slate-300 text-slate-800 p-3 md:p-2.5 text-base md:text-sm focus:outline-none focus:border-orange-500 rounded-lg shadow-sm transition placeholder:text-slate-300";
-  const labelStyle = "block text-xs font-bold text-slate-500 mb-1.5 tracking-wider uppercase";
 
   return (
-    <div className="p-6 md:p-10 max-w-3xl mx-auto w-full overflow-y-auto">
-        <h1 className="text-2xl md:text-3xl font-black mb-8">網站全域設定</h1>
-        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-            <div><label className={labelStyle}>左上角網站名稱</label><input value={globalSettings.siteName} onChange={e=>setGlobalSettings({...globalSettings, siteName: e.target.value})} className={inputStyle} /></div>
-            
-            {/* 通知設定 */}
-            <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
-               <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2"><Bell size={16}/> 通知設定 (Webhook)</h3>
-               <label className={labelStyle}>Make.com / Zapier Webhook URL</label>
-               <input value={globalSettings.notificationWebhook || ""} onChange={e=>setGlobalSettings({...globalSettings, notificationWebhook: e.target.value})} className={inputStyle} placeholder="https://hook.us1.make.com/..." />
-               <p className="text-xs text-slate-400 mt-1">填入後，當有新客戶諮詢時，系統會自動發送 POST 請求到此網址。</p>
-            </div>
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-2xl font-black text-slate-800">全域系統設定</h2>
+        <button 
+          onClick={handleSave} 
+          disabled={saving || uploading}
+          className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition disabled:opacity-50"
+        >
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+          {saving ? '儲存中...' : '儲存全域設定'}
+        </button>
+      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelStyle}>首頁大標題 (中文)</label><input value={globalSettings.heroTitleCN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleCN: e.target.value})} className={inputStyle} /></div><div><label className={labelStyle}>首頁大標題 (英文)</label><input value={globalSettings.heroTitleEN} onChange={e=>setGlobalSettings({...globalSettings, heroTitleEN: e.target.value})} className={inputStyle} /></div></div>
-            <div><label className={labelStyle}>全站聯絡電話</label><input value={globalSettings.contactPhone} onChange={e=>setGlobalSettings({...globalSettings, contactPhone: e.target.value})} className={inputStyle} /></div>
-            <h3 className="font-black border-l-4 border-orange-500 pl-2 mt-4">社群連結</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className={labelStyle}>FB 連結</label><input value={globalSettings.fbLink} onChange={e=>setGlobalSettings({...globalSettings, fbLink: e.target.value})} className={inputStyle} /></div>
-                <div><label className={labelStyle}>FB 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconFB: url}))} className="text-xs"/>{globalSettings.iconFB && <img src={globalSettings.iconFB} className="h-8 w-8 rounded-full border"/>}</div>
-                <div><label className={labelStyle}>IG 連結</label><input value={globalSettings.igLink} onChange={e=>setGlobalSettings({...globalSettings, igLink: e.target.value})} className={inputStyle} /></div>
-                <div><label className={labelStyle}>IG 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconIG: url}))} className="text-xs"/>{globalSettings.iconIG && <img src={globalSettings.iconIG} className="h-8 w-8 rounded-full border"/>}</div>
-                <div><label className={labelStyle}>LINE 連結</label><input value={globalSettings.lineLink} onChange={e=>setGlobalSettings({...globalSettings, lineLink: e.target.value})} className={inputStyle} /></div>
-                <div><label className={labelStyle}>LINE 圖示</label><input type="file" onChange={e=>handleUpload(e, (url)=>setGlobalSettings({...globalSettings, iconLINE: url}))} className="text-xs"/>{globalSettings.iconLINE && <img src={globalSettings.iconLINE} className="h-8 w-8 rounded-full border"/>}</div>
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-8">
+        
+        {/* === 首頁背景圖設定區塊 === */}
+        <div>
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <ImageIcon className="text-orange-500" size={20} />
+            首頁大看板背景圖
+          </h3>
+          <div className="flex flex-col md:flex-row gap-6 items-start">
+            <div className="w-full md:w-1/2 aspect-video bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative">
+              {settings.heroBgUrl ? (
+                <img src={settings.heroBgUrl} alt="預覽" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-slate-400 font-bold">尚未設定圖片</span>
+              )}
+              {uploading && (
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                  <Loader2 className="animate-spin text-orange-500" size={32} />
+                </div>
+              )}
             </div>
-            <button onClick={handleSaveSettings} disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-orange-600 transition shadow-lg mt-4">{loading ? "處理中..." : "儲存設定"}</button>
+            <div className="flex-1 space-y-2">
+              <p className="text-sm text-slate-500 mb-4 leading-relaxed">
+                建議上傳高畫質且檔案大小在 <strong className="text-orange-600">1MB 以內</strong> 的圖片。<br/>
+                最佳比例為 16:9 橫圖 (例如：1920x1080)。
+              </p>
+              <label className="cursor-pointer bg-white border-2 border-orange-500 text-orange-600 px-6 py-2.5 rounded-xl font-bold hover:bg-orange-50 transition inline-block">
+                選擇並上傳新照片
+                <input 
+                  type="file" 
+                  accept="image/jpeg, image/png, image/webp" 
+                  className="hidden" 
+                  onChange={handleImageUpload} 
+                />
+              </label>
+            </div>
+          </div>
         </div>
+
+        <hr className="border-slate-100" />
+
+        {/* === 首頁標題設定區塊 === */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">首頁主標題 (中文)</label>
+            <input 
+              type="text" 
+              value={settings.heroTitleCN} 
+              onChange={e => setSettings({...settings, heroTitleCN: e.target.value})}
+              className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">首頁副標題 (英文)</label>
+            <input 
+              type="text" 
+              value={settings.heroTitleEN} 
+              onChange={e => setSettings({...settings, heroTitleEN: e.target.value})}
+              className="w-full p-3 border rounded-xl bg-slate-50 focus:border-orange-500 outline-none font-mono"
+            />
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 };
