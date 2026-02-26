@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 新增這段：讓手機版字體與畫面「等比例自動縮放」 */
+@media (max-width: 768px) {
+  html {
+    /* 使用 clamp：字體最小不低於 12px，隨螢幕寬度 (vw) 縮放，最大不超過 16px */
+    font-size: clamp(12px, 3.8vw, 16px);
+  }
+}
 body {
   @apply bg-slate-50 text-slate-900;
   font-family: 'Inter', system-ui, sans-serif;

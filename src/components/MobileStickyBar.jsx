@@ -1,68 +1,63 @@
-import React from 'react';
-import { Phone, MessageCircle, Share2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, MessageCircle, Share2, Check } from 'lucide-react';
 
 const MobileStickyBar = ({ agentPhone, lineId, title }) => {
-  
-  const handleCall = () => {
-    if (!agentPhone) return alert('未設定經紀人電話');
-    window.location.href = `tel:${agentPhone}`;
-  };
-
-  const handleLine = () => {
-    if (!lineId) return alert('未設定 LINE ID');
-    // 嘗試開啟 LINE (通用連結)
-    window.open(`https://line.me/ti/p/~${lineId}`, '_blank');
-  };
+  const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
-    // 優先使用手機原生的分享選單
+    // 1. 製造專屬的分享網址替身 (/share/案名) 並加上時間戳
+    const shareUrl = `${window.location.origin}/share/${encodeURIComponent(title)}?v=${new Date().getTime()}`;
+    
+    // 2. 如果手機支援原生分享 (會彈出直接傳給 LINE / FB 的內建選單)
     if (navigator.share) {
       try {
         await navigator.share({
-          title: title,
-          text: `推薦你看這個廠房：${title}`,
-          url: window.location.href,
+          title: `${title} | 綠芽團隊`,
+          text: '推薦您看這個超棒的廠房/土地物件！',
+          url: shareUrl
         });
-      } catch (error) {
-        console.log('分享取消');
+      } catch (err) {
+        console.log('分享被取消');
       }
     } else {
-      // 電腦版或不支援時，複製連結
-      navigator.clipboard.writeText(window.location.href);
-      alert('連結已複製！');
+      // 3. 不支援時的備用方案：複製網址
+      navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 pb-[env(safe-area-inset-bottom)] z-50 md:hidden shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-      <div className="grid grid-cols-4 gap-3 h-12">
-        {/* 分享按鈕 (佔 1 等分) */}
-        <button 
-          onClick={handleShare}
-          className="col-span-1 flex flex-col items-center justify-center text-slate-500 hover:text-slate-800 active:scale-95 transition bg-slate-50 rounded-xl"
-        >
-          <Share2 size={18} />
-          <span className="text-[10px] font-bold mt-1">分享</span>
-        </button>
-
-        {/* 撥打電話 (佔 1.5 等分) */}
-        <button 
-          onClick={handleCall}
-          className="col-span-1 bg-slate-800 text-white rounded-xl flex flex-col items-center justify-center active:scale-95 transition shadow-lg shadow-slate-200"
-        >
-          <Phone size={18} />
-          <span className="text-[10px] font-bold mt-1">致電</span>
-        </button>
-
-        {/* 加 LINE (佔 2 等分 - 最顯眼) */}
-        <button 
-          onClick={handleLine}
-          className="col-span-2 bg-[#06C755] text-white rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 active:scale-95 transition shadow-lg shadow-green-100"
-        >
-          <MessageCircle size={20} className="fill-white" />
-          <span className="text-sm font-bold">加 LINE 詢問</span>
-        </button>
-      </div>
+    <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-[60] md:hidden flex items-center justify-around py-3 px-2 pb-safe">
+      
+      {/* 分享按鈕 */}
+      <button 
+        onClick={handleShare} 
+        className="flex flex-col items-center justify-center gap-1 text-slate-500 w-1/4 active:scale-95 transition"
+      >
+        {copied ? <Check size={20} className="text-green-500" /> : <Share2 size={20} />}
+        <span className="text-[10px] font-bold">{copied ? '已複製網址' : '分享案場'}</span>
+      </button>
+      
+      {/* 加 LINE 按鈕 */}
+      <a 
+        href={lineId ? `https://line.me/ti/p/~${lineId}` : "#"} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="flex flex-col items-center justify-center gap-1 text-green-600 w-1/4 active:scale-95 transition"
+      >
+        <MessageCircle size={20} />
+        <span className="text-[10px] font-bold">加 LINE</span>
+      </a>
+      
+      {/* 撥打專線按鈕 */}
+      <a 
+        href={`tel:${agentPhone || ''}`} 
+        className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-2.5 px-4 rounded-full w-1/2 ml-2 shadow-lg active:scale-95 transition"
+      >
+        <Phone size={18} />
+        <span className="text-sm">撥打專線</span>
+      </a>
     </div>
   );
 };
