@@ -1,5 +1,12 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/share/:title",
+      "destination": "https://us-central1-web-design-6ff20.cloudfunctions.net/renderShare/share/:title"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

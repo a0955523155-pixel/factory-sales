@@ -7,13 +7,21 @@ const db = admin.firestore();
 
 exports.renderShare = functions.https.onRequest(async (req, res) => {
   try {
+    /**
+     * ★★★ 核心修正：加入 Cache-Control 標頭 ★★★
+     * public: 允許快取
+     * max-age=300: 瀏覽器快取 5 分鐘
+     * s-maxage=600: 強迫 Cloudflare/Firebase CDN 每 10 分鐘必須回源抓最新資料
+     */
+    res.set('Cache-Control', 'public, max-age=300, s-maxage=600');
+
     // 1. 從網址擷取「中文案名」並解碼 (例如: /share/華富工業城一期)
     const pathParts = req.path.split('/');
     const propertyTitle = decodeURIComponent(pathParts[2] || '');
 
     // 如果沒有案名，直接回傳錯誤
     if (!propertyTitle) {
-      return res.status(404).send("找不到案場");
+      return res.status(404).send("找不到案場名稱");
     }
 
     // 2. 設定預設的「保底」圖文 (萬一資料庫找不到時顯示)
@@ -22,6 +30,7 @@ exports.renderShare = functions.https.onRequest(async (req, res) => {
     let image = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop";
 
     // 3. 去資料庫尋找這筆案場的資料
+    // 注意：這裡必須與您 React 前端寫入 Firebase 的欄位名稱完全一致
     const q = db.collection("properties").where("basicInfo.title", "==", propertyTitle).limit(1);
     const snapshot = await q.get();
 
@@ -30,7 +39,7 @@ exports.renderShare = functions.https.onRequest(async (req, res) => {
       if (docData.basicInfo) {
         title = `${docData.basicInfo.title} | 綠芽團隊`;
         desc = docData.basicInfo.description ? docData.basicInfo.description.substring(0, 100) + '...' : desc;
-        // 抓取物件的封面圖，如果沒有就用預設圖
+        // 確保抓取物件的封面圖 (thumb)
         image = docData.basicInfo.thumb || image;
       }
     }
@@ -47,6 +56,8 @@ exports.renderShare = functions.https.onRequest(async (req, res) => {
           <meta property="og:title" content="${title}">
           <meta property="og:description" content="${desc}">
           <meta property="og:image" content="${image}">
+          <meta property="og:image:width" content="1200">
+          <meta property="og:image:height" content="630">
           <meta property="og:type" content="website">
           <meta property="og:url" content="https://${req.hostname}${req.url}">
           
@@ -58,7 +69,7 @@ exports.renderShare = functions.https.onRequest(async (req, res) => {
         <body style="background-color: #f8fafc; text-align: center; padding-top: 50px; font-family: sans-serif;">
           <h2 style="color: #64748b;">正在為您開啟綠芽團隊案場...</h2>
           <script>
-            // 機器人不會執行這行，但真人點擊預覽圖進來時，會瞬間跳轉回真正的 React 網頁！
+            // 機器人不會執行 script，但真人點擊預覽圖進來時，會瞬間跳轉回真正的 React 網頁
             window.location.href = "/property/${encodeURIComponent(propertyTitle)}";
           </script>
         </body>
@@ -68,6 +79,6 @@ exports.renderShare = functions.https.onRequest(async (req, res) => {
     res.status(200).send(html);
   } catch (error) {
     console.error("Error fetching property:", error);
-    res.status(500).send("伺服器發生錯誤，請稍後再試。");
+    res.status(500).send("伺服器發生錯誤");
   }
 });
