@@ -5,27 +5,39 @@ const MobileStickyBar = ({ agentPhone, lineId, title }) => {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
-    // 1. 製造專屬的分享網址替身 (/share/案名) 並加上時間戳
     const shareUrl = `${window.location.origin}/share/${encodeURIComponent(title)}?v=${new Date().getTime()}`;
     
-    // 2. 如果手機支援原生分享 (會彈出直接傳給 LINE / FB 的內建選單)
     if (navigator.share) {
       try {
         await navigator.share({
           title: `${title} | 綠芽團隊`,
-          text: '推薦您看這個超棒的廠房/土地物件！',
+          text: '推薦您看這個超棒的廠房物件！',
           url: shareUrl
         });
       } catch (err) {
         console.log('分享被取消');
       }
     } else {
-      // 3. 不支援時的備用方案：複製網址
       navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  // ★★★ 聰明的 LINE 網址判斷邏輯 ★★★
+  let finalLineUrl = "#";
+  if (lineId) {
+    if (lineId.startsWith('http')) {
+      // 情況 1：如果您在後台直接填寫 https://lin.ee/... 這種完整網址
+      finalLineUrl = lineId;
+    } else if (lineId.startsWith('@')) {
+      // 情況 2：如果您填寫的是官方帳號 (例如 @greenbud)
+      finalLineUrl = `https://line.me/R/ti/p/${lineId}`;
+    } else {
+      // 情況 3：如果您填寫的是個人帳號 (例如 mylineid)
+      finalLineUrl = `https://line.me/ti/p/~${lineId}`;
+    }
+  }
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-[60] md:hidden flex items-center justify-around py-3 px-2 pb-safe">
@@ -36,12 +48,12 @@ const MobileStickyBar = ({ agentPhone, lineId, title }) => {
         className="flex flex-col items-center justify-center gap-1 text-slate-500 w-1/4 active:scale-95 transition"
       >
         {copied ? <Check size={20} className="text-green-500" /> : <Share2 size={20} />}
-        <span className="text-[10px] font-bold">{copied ? '已複製網址' : '分享案場'}</span>
+        <span className="text-[10px] font-bold">{copied ? '已複製' : '分享案場'}</span>
       </button>
       
       {/* 加 LINE 按鈕 */}
       <a 
-        href={lineId ? `https://line.me/ti/p/~${lineId}` : "#"} 
+        href={finalLineUrl} 
         target="_blank" 
         rel="noopener noreferrer"
         className="flex flex-col items-center justify-center gap-1 text-green-600 w-1/4 active:scale-95 transition"
