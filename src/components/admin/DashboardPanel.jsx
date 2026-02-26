@@ -40,34 +40,57 @@ const DashboardPanel = () => {
       const viewDate = d.timestamp ? d.timestamp.toDate() : new Date();
       const viewDateStr = viewDate.toISOString().split('T')[0];
 
-      // 判斷是否為「轉換路徑」
       const isConversion = d.path?.includes("/conversion/");
 
       if (!isConversion) {
-        // --- 正常流量統計 ---
         total += 1;
         if (viewDateStr === todayStr) today += 1;
         if (viewDate >= oneWeekAgo) week += 1;
         if (viewDate >= oneMonthAgo) month += 1;
 
-        const src = d.source || "直接輸入網址/未知";
+        // --- 流量來源翻譯 ---
+        let src = d.source || "直接輸入網址/未知";
+        // 如果來源網址包含亂碼也進行解碼
+        try { src = decodeURIComponent(src); } catch(e) {}
         sourceMap[src] = (sourceMap[src] || 0) + 1;
 
+        // --- 網址路徑翻譯機 ---
         let rawPath = d.path || "/";
-        let path = rawPath;
-        try { path = decodeURIComponent(rawPath); } catch (e) {}
+        let decodedPath = "/";
+        try { 
+          // 這裡就是關鍵：把 %E... 轉回中文，並去掉 ?fbclid 等追蹤參數
+          decodedPath = decodeURIComponent(rawPath).split('?')[0]; 
+        } catch (e) {
+          decodedPath = rawPath;
+        }
 
-        let pageTitle = path;
+        let pageTitle = decodedPath;
         let pageType = "一般頁面";
-        if (path === "/") { pageTitle = "綠芽團隊首頁"; pageType = "首頁"; }
-        else if (path === "/works") { pageTitle = "經典作品列表"; pageType = "列表頁"; }
-        else if (path === "/contact") { pageTitle = "聯絡我們"; pageType = "表單頁"; }
-        else if (path.includes("/property/")) { pageTitle = `廠房物件 (${path.replace('/property/', '')})`; pageType = "物件詳情"; }
 
-        if (!pageMap[path]) pageMap[path] = { title: pageTitle, type: pageType, count: 0 };
-        pageMap[path].count += 1;
+        if (decodedPath === "/") { 
+          pageTitle = "綠芽團隊首頁"; 
+          pageType = "首頁"; 
+        } else if (decodedPath === "/works") { 
+          pageTitle = "經典作品列表"; 
+          pageType = "列表頁"; 
+        } else if (decodedPath === "/contact") { 
+          pageTitle = "聯絡我們"; 
+          pageType = "表單頁"; 
+        } else if (decodedPath.includes("/property/")) { 
+          // 🏠 翻譯案場：將 /property/大成工業城 轉為 廠房物件 (大成工業城)
+          const propertyName = decodedPath.replace('/property/', '');
+          pageTitle = `🏠 案場：${propertyName}`; 
+          pageType = "物件詳情"; 
+        } else if (decodedPath.includes("/article/")) {
+          pageTitle = `📝 文章內容 (${decodedPath.replace('/article/', '')})`;
+          pageType = "新聞文章";
+        }
+
+        // 使用解碼後的路徑作為 key，避免亂碼跟中文重複計算
+        if (!pageMap[decodedPath]) pageMap[decodedPath] = { title: pageTitle, type: pageType, count: 0 };
+        pageMap[decodedPath].count += 1;
+
       } else {
-        // --- 轉換指標統計 ---
         if (d.path === "/conversion/form_submit") conversions.form += 1;
         if (d.path === "/conversion/phone_call") conversions.phone += 1;
         if (d.path === "/conversion/line_click") conversions.line += 1;
@@ -108,7 +131,7 @@ const DashboardPanel = () => {
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full overflow-y-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-        <h1 className="text-2xl md:text-3xl font-black">數據中心</h1>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900">數據中心</h1>
         <button 
           onClick={handleClearStats}
           disabled={isClearing}
@@ -119,7 +142,6 @@ const DashboardPanel = () => {
         </button>
       </div>
 
-      {/* 第一層：核心流量與轉換率 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
         <StatCard label="總瀏覽次數" value={stats.total} icon={MousePointerClick} />
         <StatCard label="轉換動作數" value={stats.convDetails.form + stats.convDetails.phone + stats.convDetails.line} icon={Target} color="text-blue-600" />
@@ -127,7 +149,6 @@ const DashboardPanel = () => {
         <StatCard label="今日瀏覽" value={stats.today} color="text-orange-600" />
       </div>
 
-      {/* 第二層：轉換細節分析 */}
       <div className="bg-slate-900 text-white p-8 rounded-3xl mb-8 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
         <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-orange-400">
@@ -149,10 +170,9 @@ const DashboardPanel = () => {
         </div>
       </div>
 
-      {/* 第三層：流量來源與熱門頁面 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
+          <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-slate-800">
             <Globe size={20} className="text-blue-500"/> 流量來源分布
           </h3>
           <div className="space-y-5">
@@ -161,8 +181,8 @@ const DashboardPanel = () => {
               return (
                 <div key={i}>
                   <div className="flex items-center justify-between mb-1 text-sm font-bold">
-                    <span className="text-slate-700">{source}</span>
-                    <span className="text-slate-500">{count} 次 ({percentage}%)</span>
+                    <span className="text-slate-700 truncate pr-4">{source}</span>
+                    <span className="text-slate-500 whitespace-nowrap">{count} 次 ({percentage}%)</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
                     <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
@@ -174,7 +194,7 @@ const DashboardPanel = () => {
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
+          <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-slate-800">
             <TrendingUp size={20} className="text-red-500"/> 熱門頁面排行
           </h3>
           <div className="space-y-5">
@@ -184,8 +204,8 @@ const DashboardPanel = () => {
                 <div key={i}>
                   <div className="flex items-center justify-between mb-1 text-sm font-bold">
                     <div className="flex flex-col truncate pr-4">
-                      <span className="text-slate-800 truncate">{page.title}</span>
-                      <span className="text-[10px] text-slate-400 uppercase font-normal">{page.type}</span>
+                      <span className="text-slate-800 truncate font-black">{page.title}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">{page.type}</span>
                     </div>
                     <span className="text-slate-600 whitespace-nowrap">{page.count} 次</span>
                   </div>
