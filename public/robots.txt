@@ -2,3 +2,12 @@ User-agent: *
 Allow: /
 
 Sitemap: https://kh-pt-factory.com/sitemap.xml
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17970862173"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-17970862173');
+</script>
