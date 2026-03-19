@@ -8,6 +8,10 @@ import CustomerPanel from '../components/admin/CustomerPanel';
 import SchedulePanel from '../components/admin/SchedulePanel';
 import AboutPanel from '../components/admin/AboutPanel';
 import SettingsPanel from '../components/admin/SettingsPanel';
+
+// ★★★ 引入電視牆控制面板 ★★★
+import TvControlPanel from '../components/admin/TvControlPanel';
+
 import { LogIn, Loader2 } from 'lucide-react';
 
 // ★★★ 引入 Firebase Auth 驗證功能 ★★★
@@ -17,34 +21,28 @@ import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebas
 const Admin = () => {
   const navigate = useNavigate();
   const [isAuth, setIsAuth] = useState(false);
-  const [loading, setLoading] = useState(true); // 增加讀取狀態，避免畫面閃爍
+  const [loading, setLoading] = useState(true); 
   const [loginForm, setLoginForm] = useState({ user: '', pass: '' });
   const [viewMode, setViewMode] = useState('dashboard');
 
-  // ★★★ 改由 Firebase 官方隨時幫我們監聽登入狀態 ★★★
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setIsAuth(true); // 擁有官方通行證
+        setIsAuth(true); 
       } else {
-        setIsAuth(false); // 被登出或無通行證
+        setIsAuth(false); 
       }
-      setLoading(false); // 驗證完畢，關閉讀取畫面
+      setLoading(false); 
     });
 
-    // 元件解除安裝時取消監聽
     return () => unsubscribe();
   }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      // 貼心設計：如果您習慣只打帳號，系統自動幫您補齊成信箱格式
       const email = loginForm.user.includes('@') ? loginForm.user : `${loginForm.user}@greenbud.com`;
-      
-      // 去 Firebase 雲端驗證帳號密碼
       await signInWithEmailAndPassword(auth, email, loginForm.pass);
-      // 成功的話，onAuthStateChanged 會自動把 isAuth 變成 true，瞬間切換畫面！
     } catch (error) {
       console.error("登入錯誤:", error);
       alert("帳號或密碼錯誤，或是您還沒在 Firebase 後台建立此帳號！");
@@ -53,7 +51,7 @@ const Admin = () => {
 
   const handleLogout = async () => {
     if (window.confirm("確定要登出嗎？")) {
-      await signOut(auth); // 呼叫 Firebase 官方登出
+      await signOut(auth); 
       navigate('/');
     }
   };
@@ -96,6 +94,9 @@ const Admin = () => {
         {viewMode === 'schedule' && <SchedulePanel />}
         {viewMode === 'about' && <AboutPanel />}
         {viewMode === 'settings' && <SettingsPanel />}
+        
+        {/* ★★★ 加入電視牆展示面板 ★★★ */}
+        {viewMode === 'tv' && <TvControlPanel />}
       </div>
     </div>
   );

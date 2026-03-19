@@ -1,5 +1,6 @@
 import React from 'react';
-import { LogOut, Layout, FileText, Users, Calendar as CalendarIcon, Building, Settings, BarChart3 } from 'lucide-react';
+// ★★★ 多引入了 MonitorPlay 作為電視牆的 Icon ★★★
+import { LogOut, Layout, FileText, Users, Calendar as CalendarIcon, Building, Settings, BarChart3, MonitorPlay } from 'lucide-react';
 
 const Sidebar = ({ viewMode, setViewMode, handleLogout }) => {
   const menuItems = [
@@ -10,6 +11,8 @@ const Sidebar = ({ viewMode, setViewMode, handleLogout }) => {
     { id: 'schedule', label: '排班管理', icon: CalendarIcon },
     { id: 'about', label: '關於頁面', icon: Building },
     { id: 'settings', label: '網站設定', icon: Settings },
+    // ★★★ 加入這行：電視展示控制面板 ★★★
+    { id: 'tv', label: '電視展示', icon: MonitorPlay },
   ];
 
   return (

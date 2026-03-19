@@ -13,8 +13,14 @@ const Contact = lazy(() => import('./pages/Contact'));
 const About = lazy(() => import('./pages/About'));
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail'));
 
-// ★★★ 新增：引入 Sitemap 產生器 ★★★
+// ★★★ 引入 Sitemap 產生器 ★★★
 const SitemapGenerator = lazy(() => import('./pages/SitemapGenerator'));
+
+// ★★★ 引入電視展示模式 ★★★
+const TvDisplay = lazy(() => import('./pages/TvDisplay'));
+
+// ★★★ 新增：引入 3D 虛擬看廠頁面 ★★★
+const Factory3D = lazy(() => import('./pages/Factory3D'));
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -44,7 +50,13 @@ function App() {
           
           <Route path="/works" element={<ArticlePage categoryGroup="works" title="經典作品" />} />
           
-          {/* ★★★ 新增：隱藏的 Sitemap 產生器路由 (必須放在 * 的前面) ★★★ */}
+          {/* 電視展示專屬路由 */}
+          <Route path="/tv" element={<TvDisplay />} />
+
+          {/* ★★★ 新增：3D 虛擬看廠專屬路由 ★★★ */}
+          <Route path="/3d-park" element={<Factory3D />} />
+          
+          {/* 隱藏的 Sitemap 產生器路由 (必須放在 * 的前面) */}
           <Route path="/build-sitemap" element={<SitemapGenerator />} />
           
           {/* 找不到網址時，自動導回首頁 */}
